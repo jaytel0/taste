@@ -219,6 +219,19 @@ pipeline/taste/04-skill/SKILL.md
 
 This is the current reusable taste skill.
 
+The skill generator owns the YAML frontmatter. It strips any model-supplied
+frontmatter, emits quoted scalar values for `name` and `description`, and then
+prepends that safe metadata to the generated Markdown body. Do not hand-edit
+the frontmatter back to unquoted values; a colon followed by a space inside an
+unquoted YAML scalar will make Codex skip the skill.
+
+After changing the generator or the skill metadata, validate the installed skill:
+
+```bash
+ruby -ryaml -e 'path=ARGV.fetch(0); text=File.read(path); fm=text.split(/^---\s*$/)[1]; data=YAML.safe_load(fm); abort("missing name/description") unless data["name"] && data["description"]' \
+  /Users/jaytel/.codex/skills/taste-design/SKILL.md
+```
+
 ### 7. Run a clean headless Pi trial
 
 Use a functional-only prompt. Current trial prompt:

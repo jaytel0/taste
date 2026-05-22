@@ -65,16 +65,28 @@ ${ruleSet}
 
 const text = await callOpenAIHigh({ model, prompt });
 const body = text.trim();
-const skill = body.startsWith("---\n") ? body : [
-  "---",
-  "name: taste-design",
-  "description: Concrete UI visual rule set for generating and reviewing restrained neutral interfaces. Use for tasks that need exact style constraints: plain sans-serif typography, pale neutral canvases, rounded surfaces, soft shadows, minimal borders, low-saturation color, sparse density, content-neutral placeholders, and anti-collapse guardrails.",
-  "---",
-  "",
-  body,
-].join("\n");
+const skill = `${buildSkillFrontmatter()}${stripFrontmatter(body)}`;
 await writeFile(skillOut, skill + "\n", "utf8");
 console.log(`Wrote ${skillOut}`);
+
+function buildSkillFrontmatter() {
+  const description = "Concrete UI visual rule set for generating and reviewing restrained neutral interfaces. Use for tasks that need exact style constraints: plain sans-serif typography, pale neutral canvases, rounded surfaces, soft shadows, minimal borders, low-saturation color, sparse density, content-neutral placeholders, and anti-collapse guardrails.";
+  return [
+    "---",
+    `name: ${yamlScalar("taste-design")}`,
+    `description: ${yamlScalar(description)}`,
+    "---",
+    "",
+  ].join("\n");
+}
+
+function yamlScalar(value) {
+  return JSON.stringify(value);
+}
+
+function stripFrontmatter(markdown) {
+  return markdown.replace(/^---\n[\s\S]*?\n---\n*/, "").trim();
+}
 
 async function callOpenAIHigh({ model, prompt }) {
   const response = await fetch("https://proxy.shopify.ai/vendors/openai/v1/responses", {

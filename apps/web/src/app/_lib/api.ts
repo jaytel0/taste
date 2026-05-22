@@ -65,6 +65,12 @@ export type RunEvent = {
   createdAt: string;
 };
 
+export type RunImage = {
+  imageId: string;
+  blobUrl: string;
+  basename: string;
+};
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -146,6 +152,13 @@ export async function fetchRunEvents(
     { runSecret: creds.runSecret },
   );
   return data.events;
+}
+
+export async function fetchRunImages(creds: RunCredentials): Promise<RunImage[]> {
+  const data = await request<{ images: RunImage[] }>(`/api/runs/${creds.runId}/images`, {
+    runSecret: creds.runSecret,
+  });
+  return data.images;
 }
 
 export async function fetchSkill(creds: RunCredentials): Promise<string> {

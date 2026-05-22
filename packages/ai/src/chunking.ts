@@ -1,4 +1,4 @@
-import type { ChunkSpec } from "./types";
+import type { ChunkSpec, RuleChunkResult } from "./types";
 
 export function chunkSynthesizedNotes(
   notes: Array<{ imageId: string; file: string; text: string }>,
@@ -15,4 +15,17 @@ export function chunkSynthesizedNotes(
     });
   }
   return chunks;
+}
+
+export function chunkRuleResults(
+  results: RuleChunkResult[],
+  fanIn = 6,
+): RuleChunkResult[][] {
+  const sorted = [...results].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
+  const groups: RuleChunkResult[][] = [];
+  const size = Math.max(2, fanIn);
+  for (let index = 0; index < sorted.length; index += size) {
+    groups.push(sorted.slice(index, index + size));
+  }
+  return groups;
 }

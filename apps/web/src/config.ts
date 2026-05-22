@@ -20,6 +20,7 @@ const envSchema = z.object({
   RULE_MODEL: z.string().default("openai/gpt-5.5"),
   SKILL_MODEL: z.string().default("openai/gpt-5.5"),
   RULE_CHUNK_SIZE: z.coerce.number().int().positive().default(10),
+  RULE_MERGE_FAN_IN: z.coerce.number().int().min(2).default(6),
 });
 
 export class AppConfigError extends Error {

@@ -1,4 +1,5 @@
 import {
+  chunkRuleResults,
   chunkSynthesizedNotes,
   extractRuleChunk,
   generateSkill as generateSkillArtifact,
@@ -38,6 +39,7 @@ import { inngest } from "./client";
 
 const analyzeConcurrency = Number(process.env.ANALYZE_IMAGE_CONCURRENCY ?? "8");
 const synthesizeConcurrency = Number(process.env.SYNTHESIZE_NOTE_CONCURRENCY ?? "8");
+const ruleMergeFanIn = Number(process.env.RULE_MERGE_FAN_IN ?? "6");
 
 export const startRun = inngest.createFunction(
   { id: "taste-start-run" },
@@ -339,7 +341,11 @@ export const extractRules = inngest.createFunction(
         }));
         const chunks = chunkSynthesizedNotes(notes, env().RULE_CHUNK_SIZE);
         await setRuleChunkTotal(runId, chunks.length);
-        await appendRunEvent(runId, "rules.chunking", `Extracting ${chunks.length} rule chunks`);
+        await appendRunEvent(
+          runId,
+          "rules.chunking",
+          `Extracting ${chunks.length} rule chunks with max merge fan-in ${ruleMergeFanIn}`,
+        );
         return { run, chunks };
       });
 
@@ -387,10 +393,15 @@ export const extractRules = inngest.createFunction(
       });
 
       await step.run("generate final rule set", async () => {
+        const reducedRuleResults = await reduceRuleResults({
+          runId,
+          token,
+          chunkResults,
+        });
         const result = await synthesizeRuleSet({
           aiGatewayToken: token,
           model: env().RULE_MODEL,
-          chunkResults,
+          chunkResults: reducedRuleResults,
         });
         const stored = await putTextArtifact(`runs/${runId}/03-rule-set/rule-set.md`, result.text);
         await storeArtifact({
@@ -479,6 +490,64 @@ export const functions = [
   extractRules,
   generateSkill,
 ];
+
+async function reduceRuleResults(input: {
+  runId: string;
+  token: string | undefined;
+  chunkResults: RuleChunkResult[];
+}): Promise<RuleChunkResult[]> {
+  let current = input.chunkResults;
+  let level = 1;
+  while (current.length > ruleMergeFanIn) {
+    const groups = chunkRuleResults(current, ruleMergeFanIn);
+    await appendRunEvent(
+      input.runId,
+      "rules.merge.layer",
+      `Merging ${current.length} rule chunks into ${groups.length} intermediate chunks`,
+      { level, inputCount: current.length, outputCount: groups.length },
+    );
+    current = await Promise.all(
+      groups.map(async (group, index) => {
+        const id = `merge_${String(level).padStart(2, "0")}_${String(index + 1).padStart(2, "0")}`;
+        const result = await synthesizeRuleSet({
+          aiGatewayToken: input.token,
+          model: env().RULE_MODEL,
+          chunkResults: group,
+        });
+        const stored = await putTextArtifact(
+          `runs/${input.runId}/03-rule-set/merges/${id}-rules.md`,
+          result.text,
+        );
+        await storeArtifact({
+          runId: input.runId,
+          type: "rule_merge",
+          chunkId: id,
+          model: env().RULE_MODEL,
+          pathname: stored.pathname,
+          blobUrl: stored.blobUrl,
+          content: result.text,
+          bytes: stored.bytes,
+          metadata: {
+            usage: result.usage,
+            responseModel: result.model,
+            sourceChunks: group.map((chunk) => chunk.id),
+          },
+        });
+        await appendRunEvent(input.runId, "rules.merge.complete", `Completed ${id}`, {
+          level,
+          chunkId: id,
+        });
+        return {
+          id,
+          files: group.flatMap((chunk) => chunk.files),
+          text: result.text,
+        } satisfies RuleChunkResult;
+      }),
+    );
+    level += 1;
+  }
+  return current.sort((a, b) => a.id.localeCompare(b.id));
+}
 
 function providerFromModel(model: string): string {
   if (model.startsWith("anthropic/")) return "anthropic";

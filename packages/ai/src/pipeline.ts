@@ -85,6 +85,10 @@ export async function generateSkill(input: {
   const body = result.text.trim();
   return {
     ...result,
-    text: body.startsWith("---\n") ? body : `${SKILL_FRONTMATTER}${body}`,
+    text: `${SKILL_FRONTMATTER}${stripFrontmatter(body)}`,
   };
+}
+
+function stripFrontmatter(markdown: string): string {
+  return markdown.replace(/^---\n[\s\S]*?\n---\n*/, "").trim();
 }
