@@ -32,6 +32,7 @@ export function UploadScreen({ creds, files, onComplete }: UploadScreenProps) {
   const itemsRef = useRef(items);
   itemsRef.current = items;
   const startedRef = useRef(false);
+  const startRequestedRef = useRef(false);
   const uploadingRef = useRef(false);
 
   const counts = useMemo(() => {
@@ -101,13 +102,6 @@ export function UploadScreen({ creds, files, onComplete }: UploadScreenProps) {
     } finally {
       uploadingRef.current = false;
     }
-    // After the batch settles, advance if every image succeeded. itemsRef
-    // reflects the latest committed render because we update it on every
-    // render and uploadOne awaits state writes between iterations.
-    const final = itemsRef.current;
-    if (final.length > 0 && final.every((item) => item.state === "done")) {
-      await tryStart();
-    }
   }, [tryStart, uploadOne]);
 
   // Kick uploads off once on mount.
@@ -120,6 +114,12 @@ export function UploadScreen({ creds, files, onComplete }: UploadScreenProps) {
   const allDone = counts.done === counts.total && counts.failed === 0;
   const progressPercent =
     counts.total === 0 ? 0 : Math.round((counts.done / counts.total) * 100);
+
+  useEffect(() => {
+    if (!allDone || startRequestedRef.current) return;
+    startRequestedRef.current = true;
+    void tryStart();
+  }, [allDone, tryStart]);
 
   return (
     <section className="card card--lift">
