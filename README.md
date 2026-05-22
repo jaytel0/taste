@@ -18,6 +18,8 @@ pipeline/tools/      # one small script per pipeline step
 pipeline/taste/      # numbered artifacts from corpus -> notes -> rule set -> skill -> trial
 ```
 
+![Taste pipeline process diagram](pipeline/taste/06-pipeline-diagram/pipeline-process.png)
+
 Start with [`pipeline/process.md`](pipeline/process.md).
 
 Current final skill:
