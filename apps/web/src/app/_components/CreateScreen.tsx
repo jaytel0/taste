@@ -208,7 +208,7 @@ export function CreateScreen({ onCreated }: CreateScreenProps) {
             </span>
             <button
               type="button"
-              className="btn btn--ghost"
+              className="btn btn--ghost btn--sm"
               onClick={clearAll}
               disabled={submitting}
             >

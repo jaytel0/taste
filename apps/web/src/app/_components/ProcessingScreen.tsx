@@ -216,7 +216,7 @@ export function ProcessingScreen({
           <div className="notice__actions">
             <button
               type="button"
-              className="btn btn--quiet"
+              className="btn btn--quiet btn--sm"
               onClick={() => {
                 setPollError(null);
                 void tick();
@@ -226,7 +226,7 @@ export function ProcessingScreen({
             </button>
             <button
               type="button"
-              className="btn btn--ghost"
+              className="btn btn--ghost btn--sm"
               onClick={() => setPaused((p) => !p)}
             >
               {paused ? "Resume polling" : "Pause polling"}

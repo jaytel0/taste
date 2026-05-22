@@ -125,7 +125,7 @@ export function SkillScreen({ creds, onStartAnother }: SkillScreenProps) {
         <div className="notice">
           {error}
           <div className="notice__actions">
-            <button type="button" className="btn btn--quiet" onClick={() => void load()}>
+            <button type="button" className="btn btn--quiet btn--sm" onClick={() => void load()}>
               Try again
             </button>
           </div>

@@ -161,7 +161,7 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
         <p className="card__eyebrow">Uploading</p>
         <button
           type="button"
-          className="btn btn--ghost"
+          className="btn btn--ghost btn--sm"
           onClick={() => void handleCancel()}
           disabled={canceling || starting}
         >
