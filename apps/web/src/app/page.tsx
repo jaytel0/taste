@@ -61,7 +61,7 @@ export default function Page() {
         setPhase({
           kind: "credentials",
           ...(oauthFlag === "failed"
-            ? { initialError: "OpenRouter sign-in did not complete. Try again or use direct provider keys." }
+            ? { initialError: "OpenRouter sign-in did not complete. Try again." }
             : {}),
         });
         return;

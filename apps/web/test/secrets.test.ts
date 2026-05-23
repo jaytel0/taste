@@ -34,7 +34,7 @@ describe("run secret crypto", () => {
         mode: "openrouter",
         openrouterApiKey: "sk-or-v1-secret",
       },
-      source: "manual",
+      source: "openrouter_oauth",
       connectedAt: "2026-05-23T00:00:00.000Z",
     });
 

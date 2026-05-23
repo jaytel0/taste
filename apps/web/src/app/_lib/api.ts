@@ -15,20 +15,13 @@ export const PRE_CREATE_ACCEPTED_TYPES = [
 ] as const;
 
 export type CreateRunInput = {
-  credentialMode?: "openrouter" | "direct";
   expectedImageCount?: number;
-};
-
-export type ManualCredentials = {
-  mode: "direct";
-  openaiApiKey: string;
-  anthropicApiKey: string;
 };
 
 export type CreateRunResponse = {
   runId: string;
   runSecret: string;
-  credentialMode: "openrouter" | "direct";
+  credentialMode: "openrouter";
   maxImages: number;
   maxImageBytes: number;
   acceptedTypes: string[];
@@ -100,8 +93,8 @@ export type ServerUploadImageInput = {
 
 export type CredentialStatus = {
   connected: boolean;
-  mode: "openrouter" | "direct" | null;
-  source: "openrouter_oauth" | "manual" | null;
+  mode: "openrouter" | null;
+  source: "openrouter_oauth" | null;
   label: string | null;
   connectedAt: string | null;
   expiresAt: string | null;
@@ -177,15 +170,6 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunRespons
 
 export async function fetchCredentialStatus(): Promise<CredentialStatus> {
   return request<CredentialStatus>("/api/credentials");
-}
-
-export async function connectManualCredentials(
-  credentials: ManualCredentials,
-): Promise<CredentialStatus> {
-  return request<CredentialStatus>("/api/credentials/manual", {
-    method: "POST",
-    body: JSON.stringify(credentials),
-  });
 }
 
 export async function clearCredentials(): Promise<void> {

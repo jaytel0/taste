@@ -4,27 +4,19 @@ import { z } from "zod";
 import { env } from "@/config";
 import { decryptSecret, encryptSecret, type EncryptedSecret } from "@/crypto/secrets";
 
-export const credentialSchema = z.discriminatedUnion("mode", [
-  z.object({
-    mode: z.literal("openrouter"),
-    openrouterApiKey: z.string().trim().min(1),
-  }),
-  z.object({
-    mode: z.literal("direct"),
-    openaiApiKey: z.string().trim().min(1),
-    anthropicApiKey: z.string().trim().min(1),
-  }),
-]) satisfies z.ZodType<AiProviderCredentials>;
+export type WebProviderCredentials = Extract<
+  AiProviderCredentials,
+  { mode: "openrouter" }
+>;
 
-export const manualCredentialSchema = z.object({
-  mode: z.literal("direct"),
-  openaiApiKey: z.string().trim().min(1),
-  anthropicApiKey: z.string().trim().min(1),
-});
+export const credentialSchema = z.object({
+  mode: z.literal("openrouter"),
+  openrouterApiKey: z.string().trim().min(1),
+}) satisfies z.ZodType<WebProviderCredentials>;
 
 export const credentialBundleSchema = z.object({
   credentials: credentialSchema,
-  source: z.enum(["openrouter_oauth", "manual"]),
+  source: z.literal("openrouter_oauth"),
   connectedAt: z.string().datetime(),
   expiresAt: z.string().datetime().optional(),
   label: z.string().optional(),
@@ -34,7 +26,7 @@ export type CredentialBundle = z.infer<typeof credentialBundleSchema>;
 
 export type CredentialStatus = {
   connected: boolean;
-  mode: AiProviderCredentials["mode"] | null;
+  mode: WebProviderCredentials["mode"] | null;
   source: CredentialBundle["source"] | null;
   label: string | null;
   connectedAt: string | null;
@@ -92,6 +84,5 @@ export function credentialStatus(bundle: CredentialBundle | null): CredentialSta
 
 function providersForCredentials(credentials: AiProviderCredentials): string[] {
   if (credentials.mode === "openrouter") return ["openrouter"];
-  if (credentials.mode === "direct") return ["openai", "anthropic"];
   return [];
 }

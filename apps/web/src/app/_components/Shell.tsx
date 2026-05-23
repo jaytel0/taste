@@ -81,7 +81,6 @@ function describeMode(status: CredentialStatus): string {
   if (status.mode === "openrouter") {
     return "OpenRouter";
   }
-  if (status.mode === "direct") return "Direct API keys";
   return "Connected";
 }
 

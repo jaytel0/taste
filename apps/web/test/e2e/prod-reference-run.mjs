@@ -20,20 +20,13 @@ if (!process.env.BLOB_READ_WRITE_TOKEN) {
 if (!process.env.INTERNAL_API_SECRET) {
   throw new Error("INTERNAL_API_SECRET is required for production E2E upload registration");
 }
-if (!process.env.TASTE_E2E_OPENAI_API_KEY || !process.env.TASTE_E2E_ANTHROPIC_API_KEY) {
-  throw new Error("TASTE_E2E_OPENAI_API_KEY and TASTE_E2E_ANTHROPIC_API_KEY are required");
+if (!process.env.TASTE_E2E_COOKIE) {
+  throw new Error(
+    "TASTE_E2E_COOKIE is required. Sign in with OpenRouter and provide the taste_ai_credentials cookie.",
+  );
 }
 
-const cookies = [];
-
-await api("/api/credentials/manual", {
-  method: "POST",
-  body: JSON.stringify({
-    mode: "direct",
-    openaiApiKey: process.env.TASTE_E2E_OPENAI_API_KEY,
-    anthropicApiKey: process.env.TASTE_E2E_ANTHROPIC_API_KEY,
-  }),
-});
+const cookies = parseCookieHeader(process.env.TASTE_E2E_COOKIE);
 
 const run = await api("/api/runs", {
   method: "POST",
@@ -175,4 +168,12 @@ function uploadPathname(runId, uploadOrder, fileName) {
   const paddedOrder = String(uploadOrder + 1).padStart(4, "0");
   const safeName = fileName.trim().replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
   return `runs/${runId}/${paddedOrder}-${safeName || `image-${paddedOrder}`}`;
+}
+
+function parseCookieHeader(value) {
+  const header = value.trim().replace(/^Cookie:\s*/i, "");
+  return header
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .filter(Boolean);
 }

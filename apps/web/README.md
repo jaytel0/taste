@@ -6,11 +6,14 @@ final `SKILL.md`.
 ## Architecture
 
 ```text
-frontend -> Next API routes -> Postgres workflow jobs -> @taste/ai -> OpenRouter/default BYOK
-                         \-> direct OpenAI + Anthropic advanced BYOK
+frontend -> Next API routes -> Postgres workflow jobs -> @taste/ai -> OpenRouter OAuth
                          \-> Neon Postgres state/leases
                          \-> private Vercel Blob uploads/artifacts
 ```
+
+The hosted web app only accepts OpenRouter OAuth sessions. Do not add public UI
+or API routes that collect individual OpenAI/Anthropic keys; direct provider
+credentials belong in local tooling built on `packages/ai`.
 
 `POST /api/runs/:runId/start` enqueues a durable workflow. `/api/jobs/drain`
 claims bounded batches of jobs with database leases, retries failed jobs, and is
@@ -48,11 +51,6 @@ GET /api/credentials/openrouter/start?returnTo=/
 GET /api/credentials/openrouter/callback
   OAuth callback. Stores credentials server-side and sets an opaque HttpOnly session cookie.
 
-POST /api/credentials/manual
-  body:
-    { mode: "direct", openaiApiKey: string, anthropicApiKey: string }
-  Validates credentials, stores them server-side, and sets an opaque HttpOnly session cookie.
-
 GET /api/credentials
 GET /api/credentials/status
   Returns non-secret credential status.
@@ -62,10 +60,9 @@ DELETE /api/credentials
 
 POST /api/runs
   body: {
-    credentialMode?: "openrouter" | "direct",
     expectedImageCount?: number
   }
-  Uses the active credential session.
+  Uses the active OpenRouter credential session.
   returns: { runId, runSecret, credentialMode, maxImages, maxImageBytes, acceptedTypes }
 
 POST /api/uploads
@@ -137,9 +134,14 @@ RATE_LIMIT_ENABLED=true
 
 ```bash
 npm install
+cp apps/web/.env.example apps/web/.env.local
 npm run db:migrate --workspace @taste/web
 npm run dev:web
 ```
+
+Open `http://localhost:3000` and connect with OpenRouter. The main app has no
+direct key entry. The Skill Lab can run in mock mode without a key, or with an
+OpenRouter key via `OPENROUTER_API_KEY` / the lab UI.
 
 ## Production E2E
 
@@ -152,6 +154,6 @@ npm run e2e:prod
 
 Use `TASTE_BASE_URL` to target a preview deployment.
 The script requires `BLOB_READ_WRITE_TOKEN`, `INTERNAL_API_SECRET`,
-`TASTE_E2E_OPENAI_API_KEY`, and `TASTE_E2E_ANTHROPIC_API_KEY`.
+and `TASTE_E2E_COOKIE` from a signed-in OpenRouter session.
 Put local test images in `pipeline/taste/01-corpus/reference-images` or set
 `TASTE_REFERENCE_DIR`; reference images are intentionally gitignored.

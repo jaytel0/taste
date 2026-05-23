@@ -38,9 +38,9 @@
   /* One spring curve used across the app so every scale / translate share
      the same physics. ~8% overshoot then settle — readable as "spring"
      without crossing into toy bounce. Applied to entrances and presses.
-     Not used for widths (progress bar must read monotonic), heights
-     (accordion intrinsic-height transitions hate overshoot), or rotations
-     (chevron springs look glitchy). Those keep iOS or ease-out curves. */
+     Not used for widths (progress bar must read monotonic) or heights
+     (intrinsic-height transitions hate overshoot). Those keep iOS or
+     ease-out curves. */
   --ease-spring: cubic-bezier(0.2, 1.08, 0.4, 1);
   --ease-ios: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -76,7 +76,7 @@ h4,
 .card__title,
 .card__sub,
 .field__hint,
-.manualform__hint,
+.local-note,
 .events__title,
 .thumbcluster__title,
 .field__label,
@@ -511,19 +511,15 @@ a {
 
 /* Same physical-press treatment for the smaller tap targets so the entire
    surface responds consistently. Slightly tighter scale on the smaller
-   shapes — 0.94 reads at 28px the way 0.97 reads at 44px. Excludes the
-   .disclose trigger: it's a quiet text-with-chevron link, not a tactile
-   button — pressing should feel weightless. */
+   shapes — 0.94 reads at 28px the way 0.97 reads at 44px. */
 .filerow__remove:active:not(:disabled),
-.segmented__btn:not(.segmented__btn--active):active,
 .input-wrap__toggle:active:not(:disabled) {
   transform: scale(0.94);
   transition: transform 60ms ease-out;
 }
 
 .filerow__remove,
-.input-wrap__toggle,
-.segmented__btn {
+.input-wrap__toggle {
   transition:
     background 120ms ease,
     color 120ms ease,
@@ -1265,195 +1261,33 @@ a {
   color: var(--text-3);
 }
 
-/* Disclosure trigger — a quiet ghost button that sits subordinate to the
-   primary action. Replaces the old full-width pale-pill <details> summary,
-   which visually competed with the Connect OpenRouter primary button. */
+/* Local setup link -------------------------------------------------- */
 
-.disclose {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 4px;
-  background: transparent;
+.local-note {
+  margin: 18px 0 0;
+  max-width: 42ch;
   font-size: 13px;
-  font-weight: 500;
   color: var(--text-2);
-  border-radius: var(--radius-pill);
-  transition: color 120ms ease;
 }
 
-.disclose:hover {
+.local-note a {
   color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--divider-strong);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 120ms ease;
 }
 
-.disclose:focus-visible {
+.local-note a:hover {
+  text-decoration-color: var(--text);
+}
+
+.local-note a:focus-visible {
   outline: none;
+  border-radius: 6px;
   box-shadow:
     0 0 0 2px var(--surface),
     0 0 0 4px var(--text);
-}
-
-.disclose svg {
-  color: var(--text-3);
-  /* iOS-style soft easing on the chevron flip so it tracks the panel's
-     own height animation visually. */
-  transition:
-    transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
-    color 120ms ease;
-}
-
-.disclose:hover svg {
-  color: var(--text-2);
-}
-
-.disclose[aria-expanded="true"] svg {
-  transform: rotate(180deg);
-}
-
-/* Custom accordion — the grid-template-rows 0fr↔1fr trick gives smooth
-   intrinsic-height animation with no JS measurement. We pair it with an
-   inner opacity + translate so the content settles rather than snapping in.
-   Same easing both directions so collapse mirrors expand. */
-
-.accordion {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 360ms cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.accordion--open {
-  grid-template-rows: 1fr;
-}
-
-.accordion__inner {
-  /* overflow:hidden clips at the PADDING-BOX edge, not the border-box edge,
-     so adding padding here reserves a clear zone for focus-ring shadows on
-     the first/last inputs without affecting the clip behavior during the
-     height transition. Horizontal padding is mirrored by a negative margin
-     below so the form content still aligns with the card's content rail. */
-  overflow: hidden;
-  min-height: 0;
-  padding: 6px 8px;
-  margin: 0 -8px;
-}
-
-.accordion__content {
-  opacity: 0;
-  transform: translateY(-4px);
-  transition:
-    opacity 240ms cubic-bezier(0.32, 0.72, 0, 1),
-    transform 360ms cubic-bezier(0.32, 0.72, 0, 1);
-  /* Visual spacing between the disclosure trigger and the form. */
-  padding-top: 14px;
-}
-
-.accordion--open .accordion__content {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .accordion,
-  .accordion__content,
-  .disclose svg {
-    transition: none;
-  }
-  /* Keep opacity as a graceful fallback per Emil's reduced-motion rule:
-     soften the change rather than killing it entirely. */
-  .accordion__content {
-    transition: opacity 120ms linear;
-    transform: none;
-  }
-}
-
-/* Slightly tighten the spacing between the primary button row and the
-   small disclosure trigger so they read as one stack rather than two
-   separate card sections. */
-.card__section--tight {
-  margin-top: 12px;
-}
-
-/* Segmented control (manual key kind picker) ---------------------- */
-
-.segmented {
-  display: inline-flex;
-  padding: 4px;
-  gap: 4px;
-  background: var(--surface);
-  border-radius: var(--radius-pill);
-  align-self: flex-start;
-  box-shadow: 0 1px 0 rgba(15, 15, 15, 0.03) inset;
-}
-
-.segmented__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 30px;
-  padding: 0 14px;
-  border-radius: var(--radius-pill);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-2);
-  background: transparent;
-  transition: color 120ms ease, background 120ms ease;
-}
-
-.segmented__btn:hover:not(.segmented__btn--active) {
-  color: var(--text);
-}
-
-.segmented__btn--active {
-  background: var(--text);
-  color: #fafafa;
-}
-
-.segmented__btn:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--surface),
-    0 0 0 4px var(--text);
-}
-
-/* Manual key form ------------------------------------------------- */
-
-.manualform {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.manualform__hint {
-  margin-top: -4px;
-  color: var(--text-2);
-}
-
-/* Inputs nested inside the Advanced panel sit on a pale-gray surface, so
-   they must be white to read as a distinct nested layer. The focus halo
-   also has to match the panel color, not the outer canvas, or it becomes a
-   chunky off-color rectangle. */
-.advanced .input {
-  background: var(--surface);
-}
-
-.advanced .input:focus {
-  background: var(--surface);
-}
-
-.advanced .input:focus-visible {
-  outline: none;
-  box-shadow:
-    0 0 0 2px var(--surface-2),
-    0 0 0 4px var(--text);
-}
-
-.advanced .input::placeholder {
-  color: var(--text-3);
-}
-
-.advanced__summary {
-  color: var(--text);
 }
 
 /* Notices ----------------------------------------------------------- */

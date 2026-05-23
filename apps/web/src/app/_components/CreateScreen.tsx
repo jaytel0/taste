@@ -126,8 +126,6 @@ export function CreateScreen({ credentials, onCreated }: CreateScreenProps) {
     setInfo(null);
   }, []);
 
-  const credentialMode = pickCredentialMode(credentials);
-
   const handleSubmit = useCallback(async () => {
     setError(null);
     const localError = validateLocally(files);
@@ -135,14 +133,13 @@ export function CreateScreen({ credentials, onCreated }: CreateScreenProps) {
       setError(localError);
       return;
     }
-    if (!credentialMode) {
-      setError("Connect credentials before starting a run.");
+    if (!credentials.connected) {
+      setError("Connect OpenRouter before starting a run.");
       return;
     }
     setSubmitting(true);
     try {
       const payload: CreateRunInput = {
-        credentialMode,
         expectedImageCount: files.length,
       };
       const response = await createRun(payload);
@@ -158,7 +155,7 @@ export function CreateScreen({ credentials, onCreated }: CreateScreenProps) {
       setError(describeError(err, "Could not create the run."));
       setSubmitting(false);
     }
-  }, [credentialMode, files, onCreated]);
+  }, [credentials.connected, files, onCreated]);
 
   // Cmd/Ctrl+Enter submits when the form is valid.
   useEffect(() => {
@@ -343,13 +340,6 @@ export function CreateScreen({ credentials, onCreated }: CreateScreenProps) {
 
 function isAcceptedType(type: string): boolean {
   return (PRE_CREATE_ACCEPTED_TYPES as readonly string[]).includes(type);
-}
-
-function pickCredentialMode(status: CredentialStatus): "openrouter" | "direct" | null {
-  if (!status.connected) return null;
-  if (status.mode === "openrouter") return "openrouter";
-  if (status.mode === "direct") return "direct";
-  return null;
 }
 
 function validateLocally(files: SelectedFile[]): string | null {

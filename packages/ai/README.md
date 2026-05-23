@@ -34,9 +34,13 @@ synthesis prompt strips raw artifact frontmatter, omits model names from
 analysis headings, and redacts known source model ids from analysis text so the
 fusion model does not see which analysis came from which model.
 
-Supported credential modes:
+Supported credential modes for local tooling and backend callers:
 
 ```text
 openrouter      # one OpenRouter key for both OpenAI and Anthropic model IDs
 direct          # separate OpenAI and Anthropic keys
 ```
+
+The hosted web app intentionally exposes OpenRouter OAuth only. Keep direct
+provider-key entry out of `apps/web`; reuse this package for local CLI or agent
+workflows that need individual OpenAI/Anthropic keys.

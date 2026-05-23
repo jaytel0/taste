@@ -7,11 +7,17 @@
 Taste turns a set of reference images into a reusable `SKILL.md` for generating
 clean frontend UI.
 
+Hosted demo: `https://taste.jaytel.com`
+
 ```text
 apps/web/      Next.js app, upload flow, API routes, worker runner, Skill Lab
 packages/ai/   prompts, model calls, chunking, and skill-generation helpers
 pipeline/      pipeline notes and the current generated taste skill
 ```
+
+The hosted web app uses OpenRouter OAuth only. Direct OpenAI/Anthropic
+credentials are kept out of the hosted UI and public API; use `packages/ai` as
+the shared foundation for local tooling that runs with your own provider keys.
 
 ## How It Works
 
@@ -109,7 +115,7 @@ private Vercel Blob storage.
 
 ```text
 browser uploads -> Next API routes -> Postgres workflow jobs
-                                     -> OpenRouter or direct provider keys
+                                     -> OpenRouter OAuth session
                                      -> private Vercel Blob artifacts
 ```
 
@@ -118,6 +124,12 @@ claims bounded batches with database leases, and Vercel Cron can re-enter the
 drain so interrupted functions resume.
 
 ## Development
+
+Requirements:
+
+- Node 24
+- A Postgres database
+- A Vercel Blob read/write token for uploaded images and generated artifacts
 
 ```bash
 npm install
@@ -130,6 +142,10 @@ Set the required values in `apps/web/.env.local` before running the app:
 `DATABASE_URL`, `APP_ENCRYPTION_KEY`, `BLOB_READ_WRITE_TOKEN`, `CRON_SECRET`,
 and `INTERNAL_API_SECRET`.
 
+Open `http://localhost:3000` and connect with OpenRouter. The `/lab` page can
+run in mock mode without a key; for real lab calls, set `OPENROUTER_API_KEY` or
+enter an OpenRouter key in the lab UI.
+
 ## Verification
 
 ```bash
@@ -139,7 +155,7 @@ npm run e2e:prod
 ```
 
 The production E2E script requires `BLOB_READ_WRITE_TOKEN`,
-`INTERNAL_API_SECRET`, `TASTE_E2E_OPENAI_API_KEY`, and
-`TASTE_E2E_ANTHROPIC_API_KEY`. Put local test images in
+`INTERNAL_API_SECRET`, and `TASTE_E2E_COOKIE` from a signed-in OpenRouter
+session. Put local test images in
 `pipeline/taste/01-corpus/reference-images` or set `TASTE_REFERENCE_DIR`;
 reference images are intentionally gitignored.
