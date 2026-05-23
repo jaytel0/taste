@@ -30,9 +30,18 @@ export function Shell({
           Taste
         </span>
         <div className="shell__head-right">
-          <span className="shell__credit" aria-label="Designed with the Taste Skill, version 1">
-            Designed with Taste Skill V1
-          </span>
+          {/* Quiet, in-header CTA — reuses the existing credit slot styling so
+             nothing in the chrome hierarchy shifts. Lets a visitor grab a
+             sample skill without leaving the page or scrolling. Bundle is
+             baked by scripts/build-example-skill.sh at build time. */}
+          <a
+            className="shell__credit"
+            href="/taste-design.zip"
+            download
+            aria-label="Download an example Taste skill"
+          >
+            Download a Taste skill example
+          </a>
           <span className="shell__divider" aria-hidden />
           <a
             className="shell__source"

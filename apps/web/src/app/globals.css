@@ -214,16 +214,34 @@ a {
 }
 
 .shell__credit {
-  /* Quiet nod that this site's frontend was designed with the same
-     Taste Skill it lets you build. Sits one step below the source link
-     in the visual hierarchy — same neutral hue, smaller, lighter weight. */
+  /* Quiet header CTA — downloads a sample Taste skill. Visually one step
+     below the View source link in the hierarchy: same neutral hue, smaller,
+     lighter weight. Hover lifts opacity to full + a soft underline so the
+     interactivity is discoverable without making the element shout. */
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.01em;
   color: var(--text-4, var(--text-3));
-  opacity: 0.7;
+  opacity: 0.88;
   white-space: nowrap;
-  user-select: none;
+  text-decoration: none;
+  transition: opacity 140ms ease, color 140ms ease;
+}
+
+a.shell__credit:hover {
+  opacity: 1;
+  color: var(--text-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+a.shell__credit:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 2px var(--canvas),
+    0 0 0 4px var(--text);
 }
 
 @media (max-width: 520px) {
