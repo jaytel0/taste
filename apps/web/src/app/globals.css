@@ -296,10 +296,15 @@ a {
   box-shadow: var(--shadow-lift);
 }
 
-.card__top-action {
+/* Upload screen header — metric on the left, Cancel ghost button on the
+   right, both aligned to the same baseline so the two read as one row.
+   Replaces the orphan-Cancel-in-its-own-row pattern. */
+.upload__head {
   display: flex;
-  justify-content: flex-end;
-  margin: 0 0 12px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 8px;
 }
 
 @keyframes card-enter {
@@ -673,6 +678,20 @@ a {
   padding: 12px 0;
 }
 
+/* Upload rows have no remove button, so they only need two columns. Without
+   this modifier the trailing column reserves a 16px gap to nothing and the
+   status label visually floats off the right rail. */
+.filerow--compact {
+  grid-template-columns: 1fr auto;
+}
+
+/* Upload list sits below the progress bar with explicit breathing room —
+   keeps the visual rhythm: head → sub → progress → list, with each gap
+   distinct rather than the previous loose .card__section spacing. */
+.filelist--upload {
+  margin-top: 24px;
+}
+
 .filerow--withthumb {
   grid-template-columns: 40px 1fr auto auto;
 }
@@ -773,7 +792,7 @@ a {
 }
 
 .bigvalue {
-  font-size: 64px;
+  font-size: 56px;
   font-weight: 600;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -782,14 +801,25 @@ a {
 }
 
 .bigvalue__unit {
-  font-size: 20px;
+  /* Larger unit + tighter spacing so "0/1" reads as one numeric phrase
+     rather than a giant number with a floating fragment. Baseline-aligned
+     via the parent .metric { align-items: baseline }. */
+  font-size: 28px;
   font-weight: 500;
   color: var(--text-3);
-  margin-left: 4px;
+  margin-left: 2px;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .card__sub--after-row {
   margin-top: 18px;
+}
+
+/* Tighter bottom spacing for the upload screen — the progress bar sits
+   directly under this sub line, so the default 32px gap reads as too loose. */
+.card__sub--tight {
+  margin: 0 0 20px;
 }
 
 /* Stat rows --------------------------------------------------------- */

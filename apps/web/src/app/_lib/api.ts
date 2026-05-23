@@ -82,6 +82,16 @@ export type RunImage = {
   basename: string;
 };
 
+export type CompleteUploadedImageInput = {
+  uploadOrder: number;
+  basename: string;
+  blobUrl: string;
+  downloadUrl?: string | null;
+  pathname: string;
+  contentType: string;
+  bytes: number;
+};
+
 export type CredentialStatus = {
   connected: boolean;
   mode: "openrouter" | "direct" | null;
@@ -192,6 +202,17 @@ export async function cancelRun(creds: RunCredentials): Promise<void> {
   await request(`/api/runs/${creds.runId}/cancel`, {
     method: "POST",
     runSecret: creds.runSecret,
+  });
+}
+
+export async function completeUploadedImage(
+  creds: RunCredentials,
+  input: CompleteUploadedImageInput,
+): Promise<void> {
+  await request(`/api/runs/${creds.runId}/images/complete`, {
+    method: "POST",
+    runSecret: creds.runSecret,
+    body: JSON.stringify(input),
   });
 }
 

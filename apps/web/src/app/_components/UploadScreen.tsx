@@ -5,11 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   cancelRun,
+  completeUploadedImage,
   describeError,
   startRun,
   type RunCredentials,
 } from "../_lib/api";
 import { formatBytes } from "../_lib/format";
+import { uploadPathname } from "@/uploads/path";
 
 const UPLOAD_CONCURRENCY = 12;
 const FILELIST_SCROLL_THRESHOLD = 6;
@@ -64,18 +66,31 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
       if (abortedRef.current) return false;
       updateItem(item.uploadOrder, { state: "uploading", error: undefined });
       try {
-        await upload(item.file.name, item.file, {
-          access: "private",
-          handleUploadUrl: "/api/uploads",
-          contentType: item.file.type,
-          clientPayload: JSON.stringify({
-            runId: creds.runId,
-            runSecret: creds.runSecret,
-            uploadOrder: item.uploadOrder,
-            fileName: item.file.name,
+        const blob = await upload(
+          uploadPathname(creds.runId, item.uploadOrder, item.file.name),
+          item.file,
+          {
+            access: "private",
+            handleUploadUrl: "/api/uploads",
             contentType: item.file.type,
-            size: item.file.size,
-          }),
+            clientPayload: JSON.stringify({
+              runId: creds.runId,
+              runSecret: creds.runSecret,
+              uploadOrder: item.uploadOrder,
+              fileName: item.file.name,
+              contentType: item.file.type,
+              size: item.file.size,
+            }),
+          },
+        );
+        await completeUploadedImage(creds, {
+          uploadOrder: item.uploadOrder,
+          basename: item.file.name,
+          blobUrl: blob.url,
+          downloadUrl: "downloadUrl" in blob ? blob.downloadUrl : null,
+          pathname: blob.pathname,
+          contentType: blob.contentType ?? item.file.type,
+          bytes: item.file.size,
         });
         if (abortedRef.current) return false;
         updateItem(item.uploadOrder, { state: "done" });
@@ -157,7 +172,11 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
 
   return (
     <section className="card card--lift">
-      <div className="card__top-action">
+      <header className="upload__head">
+        <div className="metric">
+          <span className="bigvalue">{counts.done}</span>
+          <span className="bigvalue__unit">/{counts.total}</span>
+        </div>
         <button
           type="button"
           className="btn btn--ghost btn--sm"
@@ -166,12 +185,9 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
         >
           {canceling ? "Canceling…" : "Cancel"}
         </button>
-      </div>
-      <div className="metric">
-        <span className="bigvalue">{counts.done}</span>
-        <span className="bigvalue__unit"> / {counts.total}</span>
-      </div>
-      <p className="card__sub" aria-live="polite">
+      </header>
+
+      <p className="card__sub card__sub--tight" aria-live="polite">
         {allDone
           ? starting
             ? "Uploads complete. Starting…"
@@ -181,18 +197,16 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
           : "Uploading reference images."}
       </p>
 
-      <div className="card__section">
-        <div className="progress" aria-label="Upload progress">
-          <div className="progress__fill" style={{ width: `${progressPercent}%` }} />
-        </div>
+      <div className="progress" aria-label="Upload progress">
+        <div className="progress__fill" style={{ width: `${progressPercent}%` }} />
       </div>
 
       <ul
-        className={`filelist${useScroll ? " filelist--scroll" : ""}`}
+        className={`filelist filelist--upload${useScroll ? " filelist--scroll" : ""}`}
         aria-label="Upload list"
       >
         {items.map((item) => (
-          <li key={item.uploadOrder} className="filerow">
+          <li key={item.uploadOrder} className="filerow filerow--compact">
             <div className="filerow__text">
               <span className="filerow__name">{item.file.name}</span>
               <span className="filerow__meta">
@@ -201,7 +215,6 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
               </span>
             </div>
             <span className={statusClass(item.state)}>{statusLabel(item.state)}</span>
-            <span aria-hidden />
           </li>
         ))}
       </ul>

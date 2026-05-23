@@ -1,3 +1,4 @@
+import { head } from "@vercel/blob";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -5,7 +6,8 @@ import { ACCEPTED_IMAGE_TYPES, env } from "@/config";
 import { registerUploadedImage } from "@/db/repository";
 import { routeParams, requireRunAccess } from "@/http/auth";
 import { errorResponse } from "@/http/errors";
-import { assertSameOrigin, requireInternalAccess } from "@/http/security";
+import { assertSameOrigin } from "@/http/security";
+import { uploadPrefix } from "@/uploads/path";
 
 const completeSchema = z.object({
   uploadOrder: z.number().int().nonnegative(),
@@ -24,7 +26,6 @@ export async function POST(
   const { runId } = await routeParams(context);
   try {
     await assertSameOrigin(request);
-    requireInternalAccess(request);
     const access = await requireRunAccess(request, runId);
     if (!access.ok) return access.response;
     if (access.run.status !== "uploading") {
@@ -43,15 +44,32 @@ export async function POST(
     if (access.run.expectedImageCount !== null && body.uploadOrder >= access.run.expectedImageCount) {
       return Response.json({ error: `Run expects ${access.run.expectedImageCount} images` }, { status: 400 });
     }
+    if (!body.pathname.startsWith(uploadPrefix(runId, body.uploadOrder))) {
+      return Response.json({ error: "Image does not belong to this run" }, { status: 400 });
+    }
+    const verified = await head(body.pathname).catch(() => null);
+    if (!verified) {
+      return Response.json({ error: "Uploaded image could not be verified" }, { status: 400 });
+    }
+    if (verified.pathname !== body.pathname) {
+      return Response.json({ error: "Uploaded image could not be verified" }, { status: 400 });
+    }
+    if (verified.size !== body.bytes) {
+      return Response.json({ error: "Uploaded image size did not match" }, { status: 400 });
+    }
+    const contentType = verified.contentType ?? body.contentType;
+    if (contentType !== body.contentType) {
+      return Response.json({ error: "Uploaded image content type did not match" }, { status: 400 });
+    }
     const image = await registerUploadedImage({
       runId,
       uploadOrder: body.uploadOrder,
       basename: body.basename,
-      blobUrl: body.blobUrl,
-      downloadUrl: body.downloadUrl,
+      blobUrl: verified.url || body.blobUrl,
+      downloadUrl: verified.downloadUrl || body.downloadUrl,
       pathname: body.pathname,
-      contentType: body.contentType,
-      bytes: body.bytes,
+      contentType,
+      bytes: verified.size,
     });
     return Response.json({ imageId: image.id });
   } catch (error) {

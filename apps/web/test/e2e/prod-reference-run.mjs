@@ -46,7 +46,7 @@ for (const file of files) {
   const bytes = await readFile(file);
   const info = await stat(file);
   const name = basename(file);
-  const pathname = `e2e/${run.runId}/${String(order + 1).padStart(4, "0")}-${name}`;
+  const pathname = uploadPathname(run.runId, order, name);
   const blob = await put(pathname, bytes, {
     access: "private",
     contentType: contentTypeFor(file),
@@ -163,4 +163,10 @@ function contentTypeFor(path) {
   if (ext === ".webp") return "image/webp";
   if (ext === ".gif") return "image/gif";
   return "application/octet-stream";
+}
+
+function uploadPathname(runId, uploadOrder, fileName) {
+  const paddedOrder = String(uploadOrder + 1).padStart(4, "0");
+  const safeName = fileName.trim().replace(/[^a-zA-Z0-9._-]+/g, "_").replace(/^_+|_+$/g, "");
+  return `runs/${runId}/${paddedOrder}-${safeName || `image-${paddedOrder}`}`;
 }

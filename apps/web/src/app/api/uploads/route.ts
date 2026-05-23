@@ -4,14 +4,12 @@ import { z } from "zod";
 
 import { ACCEPTED_IMAGE_TYPES, env } from "@/config";
 import {
-  requireRun,
-  registerUploadedImage,
   uploadedImageCount,
   verifyRunSecret,
 } from "@/db/repository";
 import { errorResponse } from "@/http/errors";
 import { assertSameOrigin, enforceRateLimit } from "@/http/security";
-import { deleteBlobPathnames } from "@/storage/blob";
+import { uploadPrefix } from "@/uploads/path";
 
 const clientPayloadSchema = z.object({
   runId: z.string().uuid(),
@@ -38,6 +36,9 @@ export async function POST(request: NextRequest) {
         }
         const count = await uploadedImageCount(payload.runId);
         const uploadOrder = payload.uploadOrder ?? count;
+        if (!pathname.startsWith(uploadPrefix(payload.runId, uploadOrder))) {
+          throw new Error("Upload pathname does not match this run");
+        }
         if (uploadOrder >= run.maxImages) {
           throw new Error(`Run cannot exceed ${run.maxImages} images`);
         }
@@ -69,47 +70,6 @@ export async function POST(request: NextRequest) {
             size: payload.size,
           }),
         };
-      },
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        const payload = z
-          .object({
-            runId: z.string().uuid(),
-            uploadOrder: z.number().int().nonnegative(),
-            originalPathname: z.string().optional(),
-            fileName: z.string().min(1).optional(),
-            contentType: z.string().min(1).optional(),
-            size: z.number().int().nonnegative().optional(),
-          })
-          .parse(JSON.parse(tokenPayload ?? "{}"));
-        try {
-          const run = await requireRun(payload.runId);
-          if (run.status !== "uploading") {
-            throw new Error("Run is no longer accepting uploads");
-          }
-          if (payload.uploadOrder >= run.maxImages) {
-            throw new Error(`Run cannot exceed ${run.maxImages} images`);
-          }
-          if (run.expectedImageCount !== null && payload.uploadOrder >= run.expectedImageCount) {
-            throw new Error(`Run expects ${run.expectedImageCount} images`);
-          }
-          await registerUploadedImage({
-            runId: payload.runId,
-            uploadOrder: payload.uploadOrder,
-            basename:
-              payload.fileName ??
-              payload.originalPathname?.split("/").pop() ??
-              blob.pathname.split("/").pop() ??
-              "image",
-            blobUrl: blob.url,
-            downloadUrl: "downloadUrl" in blob ? String(blob.downloadUrl) : null,
-            pathname: blob.pathname,
-            contentType: blob.contentType ?? payload.contentType ?? "application/octet-stream",
-            bytes: (blob as { size?: number }).size ?? payload.size ?? 0,
-          });
-        } catch (error) {
-          await deleteBlobPathnames([blob.pathname]).catch(() => {});
-          throw error;
-        }
       },
     });
     return Response.json(response);
