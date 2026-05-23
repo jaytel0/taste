@@ -11,6 +11,8 @@ dist/
 .env.*
 !.env.example
 !apps/web/.env.example
+.taste-lab/
+apps/web/.taste-lab/
 
 pipeline/taste/cache/
 pipeline/taste/05-pi-trial/logs/
