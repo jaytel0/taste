@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "prebuild": "bash ../../scripts/build-example-skill.sh",
     "check": "tsc --noEmit",
     "test": "vitest run",
     "e2e:prod": "node test/e2e/prod-reference-run.mjs",

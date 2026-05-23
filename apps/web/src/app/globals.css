@@ -400,6 +400,14 @@ a {
   margin-top: 0;
 }
 
+/* When a card has no sub-copy under its title, the card__title's 12px bottom
+   margin alone reads as too tight against the first action row. Restore the
+   breathing room that .card__sub would normally contribute (32px) so the
+   title-to-CTA gap matches the rhythm of cards that do have a sub. */
+.card__title + .card__section {
+  margin-top: 32px;
+}
+
 /* Form controls ------------------------------------------------------ */
 
 .field {

@@ -3,7 +3,6 @@
 import type { ReactNode } from "react";
 
 import type { CredentialStatus } from "../_lib/api";
-import { truncateId } from "../_lib/format";
 
 const SOURCE_URL = "https://github.com/jaytel0/taste";
 
@@ -57,7 +56,6 @@ export function Shell({
                 <span className="credchip__label">{describeMode(credentials)}</span>
               </span>
             )}
-            {runId && <span className="mono">{truncateId(runId)}</span>}
           </div>
           <div className="shell__foot-right">
             {onDisconnect && (

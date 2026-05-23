@@ -78,11 +78,7 @@ export function CredentialScreen({
   return (
     <>
       <section className="card card--lift">
-        <h1 className="card__title">Bring your own model access.</h1>
-        <p className="card__sub">
-          This app requires two models. The simplest way is to use OpenRouter. Your API key never
-          touches this device — it stays in an encrypted server session.
-        </p>
+        <h1 className="card__title">Turn reference images into a taste skill.</h1>
 
         <div className="card__section btn-row">
           <button
@@ -101,6 +97,19 @@ export function CredentialScreen({
               </>
             )}
           </button>
+          {/* Lets a visitor preview the actual output of the pipeline before
+             committing to the OAuth handshake. The zip mirrors the Claude
+             Skills on-disk convention: <skill-name>/SKILL.md inside the
+             archive, with the folder name matching the skill's YAML `name`.
+             Bundle is rebuilt from pipeline/taste/taste-skill/SKILL.md by
+             scripts/build-example-skill.sh on every web build. */}
+          <a
+            className="btn btn--quiet"
+            href="/taste-design.zip"
+            download
+          >
+            Try the taste skill example
+          </a>
         </div>
 
         {error && <p className="notice">{error}</p>}
@@ -111,7 +120,7 @@ export function CredentialScreen({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Or try this yourself locally using your own keys.
+            Try this yourself locally.
           </a>
         </p>
       </section>
