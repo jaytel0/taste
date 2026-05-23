@@ -1,38 +1,41 @@
-import { createGateway } from "@ai-sdk/gateway";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { generateText } from "ai";
 
-import type { ImageInput, TextGenerationResult } from "./types";
+import type { AiProviderCredentials, ImageInput, TextGenerationResult } from "./types";
 
-export async function generateGatewayText(input: {
-  aiGatewayToken?: string | undefined;
+export async function generateProviderText(input: {
+  credentials?: AiProviderCredentials | undefined;
   model: string;
   prompt: string;
   maxOutputTokens: number;
+  abortSignal?: AbortSignal | undefined;
 }): Promise<TextGenerationResult> {
-  const gateway = createGateway(input.aiGatewayToken ? { apiKey: input.aiGatewayToken } : undefined);
-  const result = await withGatewayRetries(() =>
+  const result = await withProviderRetries(() =>
     generateText({
-      model: gateway(input.model),
+      model: createLanguageModel(input.credentials, input.model),
       prompt: input.prompt,
       maxOutputTokens: input.maxOutputTokens,
       maxRetries: 2,
       timeout: { totalMs: 180_000 },
+      ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
     }),
   );
   return toTextGenerationResult(input.model, result);
 }
 
-export async function generateGatewayVisionText(input: {
-  aiGatewayToken?: string | undefined;
+export async function generateProviderVisionText(input: {
+  credentials?: AiProviderCredentials | undefined;
   model: string;
   prompt: string;
   image: ImageInput;
   maxOutputTokens: number;
+  abortSignal?: AbortSignal | undefined;
 }): Promise<TextGenerationResult> {
-  const gateway = createGateway(input.aiGatewayToken ? { apiKey: input.aiGatewayToken } : undefined);
-  const result = await withGatewayRetries(() =>
+  const result = await withProviderRetries(() =>
     generateText({
-      model: gateway(input.model),
+      model: createLanguageModel(input.credentials, input.model),
       messages: [
         {
           role: "user",
@@ -49,26 +52,55 @@ export async function generateGatewayVisionText(input: {
       maxOutputTokens: input.maxOutputTokens,
       maxRetries: 2,
       timeout: { totalMs: 180_000 },
+      ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
     }),
   );
   return toTextGenerationResult(input.model, result);
 }
 
-async function withGatewayRetries<T>(operation: () => Promise<T>): Promise<T> {
+function createLanguageModel(credentials: AiProviderCredentials | undefined, model: string) {
+  if (!credentials) {
+    throw new Error("AI provider credentials are required.");
+  }
+
+  if (credentials.mode === "openrouter") {
+    return createOpenRouter({ apiKey: credentials.openrouterApiKey })(model);
+  }
+
+  if (model.startsWith("openai/")) {
+    return createOpenAI({ apiKey: credentials.openaiApiKey })(stripProviderPrefix(model, "openai"));
+  }
+
+  if (model.startsWith("anthropic/")) {
+    return createAnthropic({ apiKey: credentials.anthropicApiKey })(
+      stripProviderPrefix(model, "anthropic"),
+    );
+  }
+
+  throw new Error(`Direct credential mode does not support model: ${model}`);
+}
+
+function stripProviderPrefix(model: string, provider: "openai" | "anthropic"): string {
+  const prefix = `${provider}/`;
+  return model.startsWith(prefix) ? model.slice(prefix.length) : model;
+}
+
+async function withProviderRetries<T>(operation: () => Promise<T>): Promise<T> {
   let lastError: unknown;
   for (let attempt = 0; attempt < 6; attempt += 1) {
     try {
       return await operation();
     } catch (error) {
       lastError = error;
-      if (attempt === 5 || !isRetryableGatewayError(error)) break;
+      if (attempt === 5 || !isRetryableProviderError(error)) break;
       await new Promise((resolve) => setTimeout(resolve, retryDelayMs(error, attempt)));
     }
   }
   throw lastError;
 }
 
-function isRetryableGatewayError(error: unknown): boolean {
+function isRetryableProviderError(error: unknown): boolean {
+  if (error instanceof Error && error.name === "AbortError") return false;
   const status = errorStatus(error);
   if (status === undefined) return true;
   return status === 408 || status === 409 || status === 425 || status === 429 || status >= 500;

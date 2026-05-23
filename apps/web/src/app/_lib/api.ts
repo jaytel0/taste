@@ -16,13 +16,20 @@ export const PRE_CREATE_ACCEPTED_TYPES = [
 ] as const;
 
 export type CreateRunInput = {
-  aiGatewayToken?: string;
+  credentialMode?: "openrouter" | "direct";
   expectedImageCount?: number;
+};
+
+export type ManualCredentials = {
+  mode: "direct";
+  openaiApiKey: string;
+  anthropicApiKey: string;
 };
 
 export type CreateRunResponse = {
   runId: string;
   runSecret: string;
+  credentialMode: "openrouter" | "direct";
   maxImages: number;
   maxImageBytes: number;
   acceptedTypes: string[];
@@ -55,6 +62,10 @@ export type RunStatus = {
     ruleChunkTotal: number;
   };
   artifacts: { skillReady: boolean };
+  credentials?: {
+    mode: string;
+    stored: boolean;
+  };
 };
 
 export type RunEvent = {
@@ -69,6 +80,16 @@ export type RunImage = {
   imageId: string;
   blobUrl: string;
   basename: string;
+};
+
+export type CredentialStatus = {
+  connected: boolean;
+  mode: "openrouter" | "direct" | null;
+  source: "openrouter_oauth" | "manual" | null;
+  label: string | null;
+  connectedAt: string | null;
+  expiresAt: string | null;
+  providers: string[];
 };
 
 export class ApiError extends Error {
@@ -112,6 +133,17 @@ async function parseError(response: Response): Promise<string> {
     if (data && typeof data === "object" && "error" in data && typeof data.error === "string") {
       return data.error;
     }
+    if (
+      data &&
+      typeof data === "object" &&
+      "error" in data &&
+      data.error &&
+      typeof data.error === "object" &&
+      "message" in data.error &&
+      typeof data.error.message === "string"
+    ) {
+      return data.error.message;
+    }
   } catch {
     /* fall through */
   }
@@ -123,6 +155,30 @@ export async function createRun(input: CreateRunInput): Promise<CreateRunRespons
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function fetchCredentialStatus(): Promise<CredentialStatus> {
+  return request<CredentialStatus>("/api/credentials");
+}
+
+export async function connectManualCredentials(
+  credentials: ManualCredentials,
+): Promise<CredentialStatus> {
+  return request<CredentialStatus>("/api/credentials/manual", {
+    method: "POST",
+    body: JSON.stringify(credentials),
+  });
+}
+
+export async function clearCredentials(): Promise<void> {
+  await request("/api/credentials", { method: "DELETE" });
+}
+
+export async function createOpenRouterConnectUrl(returnTo = "/"): Promise<string> {
+  const data = await request<{ url: string }>(
+    `/api/credentials/openrouter/start?format=json&returnTo=${encodeURIComponent(returnTo)}`,
+  );
+  return data.url;
 }
 
 export async function startRun(creds: RunCredentials): Promise<void> {

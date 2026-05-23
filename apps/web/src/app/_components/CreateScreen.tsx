@@ -9,7 +9,9 @@ import {
   PRE_CREATE_ACCEPTED_TYPES,
   PRE_CREATE_IMAGE_BYTES_CAP,
   PRE_CREATE_IMAGE_CAP,
+  type CreateRunInput,
   type CreateRunResponse,
+  type CredentialStatus,
 } from "../_lib/api";
 import { formatBytes } from "../_lib/format";
 import { Dropzone } from "./Dropzone";
@@ -21,14 +23,13 @@ type SelectedFile = {
 };
 
 type CreateScreenProps = {
+  credentials: CredentialStatus;
   onCreated: (response: CreateRunResponse, files: File[]) => void;
 };
 
 const FILELIST_SCROLL_THRESHOLD = 6;
 
-export function CreateScreen({ onCreated }: CreateScreenProps) {
-  const [token, setToken] = useState("");
-  const [showToken, setShowToken] = useState(false);
+export function CreateScreen({ credentials, onCreated }: CreateScreenProps) {
   const [files, setFiles] = useState<SelectedFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +125,8 @@ export function CreateScreen({ onCreated }: CreateScreenProps) {
     setInfo(null);
   }, []);
 
+  const credentialMode = pickCredentialMode(credentials);
+
   const handleSubmit = useCallback(async () => {
     setError(null);
     const localError = validateLocally(files);
@@ -131,13 +134,17 @@ export function CreateScreen({ onCreated }: CreateScreenProps) {
       setError(localError);
       return;
     }
+    if (!credentialMode) {
+      setError("Connect credentials before starting a run.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const aiGatewayToken = token.trim();
-      const response = await createRun({
-        ...(aiGatewayToken ? { aiGatewayToken } : {}),
+      const payload: CreateRunInput = {
+        credentialMode,
         expectedImageCount: files.length,
-      });
+      };
+      const response = await createRun(payload);
       const serverError = validateAgainstServer(files, response);
       if (serverError) {
         setError(serverError);
@@ -150,7 +157,7 @@ export function CreateScreen({ onCreated }: CreateScreenProps) {
       setError(describeError(err, "Could not create the run."));
       setSubmitting(false);
     }
-  }, [files, onCreated, token]);
+  }, [credentialMode, files, onCreated]);
 
   // Cmd/Ctrl+Enter submits when the form is valid.
   useEffect(() => {
@@ -164,29 +171,129 @@ export function CreateScreen({ onCreated }: CreateScreenProps) {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [files.length, handleSubmit, submitting, token]);
+  }, [files.length, handleSubmit, submitting]);
 
   const canSubmit = !submitting && files.length > 0;
   const useScroll = files.length > FILELIST_SCROLL_THRESHOLD;
 
+  const openFilePicker = useCallback(() => inputRef.current?.click(), []);
+
+  // Drag handlers shared by the empty dropzone and the file panel that
+  // replaces it once any files exist. Mounting them on a stable wrapper
+  // avoids the React-strict re-mount that drops the dragenter/leave pairing.
+  const handleDragEnter = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      if (!submitting) setDragActive(true);
+    },
+    [submitting],
+  );
+  const handleDragOver = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      if (!submitting) setDragActive(true);
+    },
+    [submitting],
+  );
+  const handleDragLeave = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    // Only clear when the cursor actually leaves the panel — dragging across
+    // child rows fires leave/enter pairs that would otherwise flicker.
+    const next = event.relatedTarget as Node | null;
+    if (next && event.currentTarget.contains(next)) return;
+    setDragActive(false);
+  }, []);
+  const handleDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      setDragActive(false);
+      if (submitting) return;
+      if (event.dataTransfer.files) addFiles(event.dataTransfer.files);
+    },
+    [addFiles, submitting],
+  );
+
   return (
     <section className="card card--lift">
-      <p className="card__eyebrow">New run</p>
       <h1 className="card__title">Turn reference images into a taste skill.</h1>
       <p className="card__sub">
         Drop in a corpus, then the pipeline will produce a single reusable SKILL.md.
       </p>
 
       <div className="card__section">
-        <Dropzone
-          active={dragActive}
-          disabled={submitting}
-          fileCount={files.length}
-          totalBytes={totalBytes}
-          onActiveChange={setDragActive}
-          onSelect={addFiles}
-          onClick={() => inputRef.current?.click()}
-        />
+        {files.length === 0 ? (
+          <Dropzone
+            active={dragActive}
+            disabled={submitting}
+            fileCount={files.length}
+            totalBytes={totalBytes}
+            onActiveChange={setDragActive}
+            onSelect={addFiles}
+            onClick={openFilePicker}
+          />
+        ) : (
+          <div
+            className={`filepanel${dragActive ? " filepanel--active" : ""}`}
+            onDragEnter={handleDragEnter}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            aria-label="Selected images. Drop more files here to add."
+          >
+            <div className="filepanel__head">
+              <span className="muted">
+                {files.length} {files.length === 1 ? "image" : "images"} · {formatBytes(totalBytes)}
+              </span>
+              <div className="filepanel__actions">
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={openFilePicker}
+                  disabled={submitting}
+                >
+                  + Add more
+                </button>
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={clearAll}
+                  disabled={submitting}
+                >
+                  Clear all
+                </button>
+              </div>
+            </div>
+            <ul
+              className={`filelist${useScroll ? " filelist--scroll" : ""}`}
+              aria-label="Selected images"
+            >
+              {files.map((item) => (
+                <li key={item.id} className="filerow filerow--withthumb">
+                  <img
+                    src={item.previewUrl}
+                    alt=""
+                    className="filerow__thumb"
+                    loading="lazy"
+                  />
+                  <div className="filerow__text">
+                    <span className="filerow__name">{item.file.name}</span>
+                    <span className="filerow__meta">{formatBytes(item.file.size)}</span>
+                  </div>
+                  <span className="filerow__status">Ready</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${item.file.name}`}
+                    className="filerow__remove"
+                    onClick={() => removeFile(item.id)}
+                    disabled={submitting}
+                  >
+                    ×
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <input
           ref={inputRef}
           type="file"
@@ -200,85 +307,7 @@ export function CreateScreen({ onCreated }: CreateScreenProps) {
         />
       </div>
 
-      {files.length > 0 && (
-        <>
-          <div className="filelist__head">
-            <span className="muted">
-              {files.length} {files.length === 1 ? "image" : "images"} · {formatBytes(totalBytes)}
-            </span>
-            <button
-              type="button"
-              className="btn btn--ghost btn--sm"
-              onClick={clearAll}
-              disabled={submitting}
-            >
-              Clear all
-            </button>
-          </div>
-          <ul
-            className={`filelist${useScroll ? " filelist--scroll" : ""}`}
-            aria-label="Selected images"
-          >
-            {files.map((item) => (
-              <li key={item.id} className="filerow filerow--withthumb">
-                <img
-                  src={item.previewUrl}
-                  alt=""
-                  className="filerow__thumb"
-                  loading="lazy"
-                />
-                <div className="filerow__text">
-                  <span className="filerow__name">{item.file.name}</span>
-                  <span className="filerow__meta">{formatBytes(item.file.size)}</span>
-                </div>
-                <span className="filerow__status">Ready</span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${item.file.name}`}
-                  className="filerow__remove"
-                  onClick={() => removeFile(item.id)}
-                  disabled={submitting}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-
       {info && <p className="notice notice--quiet">{info}</p>}
-
-      <div className="card__section">
-        <label className="field" htmlFor="ai-token">
-          <span className="field__label">AI Gateway token</span>
-          <div className="input-wrap">
-            <input
-              id="ai-token"
-              type={showToken ? "text" : "password"}
-              autoComplete="off"
-              spellCheck={false}
-              className="input input--mono"
-              placeholder="sk-aigw-…"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              disabled={submitting}
-            />
-            <button
-              type="button"
-              className="input-wrap__toggle"
-              aria-label={showToken ? "Hide token" : "Show token"}
-              onClick={() => setShowToken((s) => !s)}
-              disabled={submitting}
-            >
-              {showToken ? <EyeOffGlyph /> : <EyeGlyph />}
-            </button>
-          </div>
-          <span className="field__hint">
-            Optional. Leave blank to use this Vercel project's AI Gateway access.
-          </span>
-        </label>
-      </div>
 
       {error && <p className="notice">{error}</p>}
 
@@ -314,6 +343,13 @@ function isAcceptedType(type: string): boolean {
   return (PRE_CREATE_ACCEPTED_TYPES as readonly string[]).includes(type);
 }
 
+function pickCredentialMode(status: CredentialStatus): "openrouter" | "direct" | null {
+  if (!status.connected) return null;
+  if (status.mode === "openrouter") return "openrouter";
+  if (status.mode === "direct") return "direct";
+  return null;
+}
+
 function validateLocally(files: SelectedFile[]): string | null {
   if (files.length === 0) return "Add at least one reference image.";
   if (files.length > PRE_CREATE_IMAGE_CAP) {
@@ -340,44 +376,4 @@ function validateAgainstServer(
     return `${tooLarge.file.name} is larger than ${formatBytes(response.maxImageBytes)}.`;
   }
   return null;
-}
-
-function EyeGlyph() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
-function EyeOffGlyph() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-6.5 0-10-7-10-7a18.78 18.78 0 0 1 4.06-5.06" />
-      <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c6.5 0 10 7 10 7a18.78 18.78 0 0 1-2.16 3.19" />
-      <path d="M1 1l22 22" />
-      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-    </svg>
-  );
 }

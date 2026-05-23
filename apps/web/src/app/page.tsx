@@ -3,16 +3,20 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { CreateScreen } from "./_components/CreateScreen";
+import { CredentialScreen } from "./_components/CredentialScreen";
 import { ProcessingScreen } from "./_components/ProcessingScreen";
 import { Shell } from "./_components/Shell";
 import { SkillScreen } from "./_components/SkillScreen";
 import { UploadScreen } from "./_components/UploadScreen";
 import {
   ApiError,
+  clearCredentials,
   describeError,
+  fetchCredentialStatus,
   fetchRunStatus,
   isTerminal,
   type CreateRunResponse,
+  type CredentialStatus,
   type RunCredentials,
   type RunStatus,
 } from "./_lib/api";
@@ -20,6 +24,7 @@ import { clearStoredRun, loadStoredRun, saveStoredRun } from "./_lib/storage";
 
 type Phase =
   | { kind: "boot" }
+  | { kind: "credentials"; initialError?: string }
   | { kind: "create" }
   | { kind: "uploading"; creds: RunCredentials; files: File[] }
   | { kind: "processing"; creds: RunCredentials; initialStatus?: RunStatus }
@@ -28,34 +33,71 @@ type Phase =
 
 export default function Page() {
   const [phase, setPhase] = useState<Phase>({ kind: "boot" });
+  const [credentials, setCredentials] = useState<CredentialStatus | null>(null);
 
-  // Resume an active run when the app mounts.
+  // Boot: consume any OAuth-return URL params, fetch credential status, then
+  // either restore an active run or show the create / credentials screen.
   useEffect(() => {
-    const stored = loadStoredRun();
-    if (!stored) {
-      setPhase({ kind: "create" });
-      return;
-    }
-    void resumeStored(stored).then(setPhase);
+    let cancelled = false;
+    (async () => {
+      const oauthFlag = readAndStripCredentialFlag();
+
+      let status: CredentialStatus;
+      try {
+        status = await fetchCredentialStatus();
+      } catch {
+        status = emptyCredentialStatus();
+      }
+      if (cancelled) return;
+      setCredentials(status);
+
+      if (!status.connected) {
+        setPhase({
+          kind: "credentials",
+          ...(oauthFlag === "failed"
+            ? { initialError: "OpenRouter sign-in did not complete. Try again or use direct provider keys." }
+            : {}),
+        });
+        return;
+      }
+
+      const stored = loadStoredRun();
+      if (!stored) {
+        setPhase({ kind: "create" });
+        return;
+      }
+      const resumed = await resumeStored(stored);
+      if (!cancelled) setPhase(resumed);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Keep the favicon in sync with the phase so a backgrounded tab gets a
-  // glanceable signal. The dark dot is neutral; complete swaps to accent.
-  useEffect(() => {
-    setFavicon(phase.kind === "complete" ? "complete" : "default");
-  }, [phase.kind]);
+  const handleCredentialsConnected = useCallback((status: CredentialStatus) => {
+    setCredentials(status);
+    // After connecting, drop into create unless the user already has an
+    // active run stored (e.g. they reconnected without disconnecting first).
+    setPhase((current) => {
+      if (current.kind !== "credentials" && current.kind !== "boot") return current;
+      const stored = loadStoredRun();
+      if (!stored) return { kind: "create" };
+      // Defer to the boot-style resume so a mid-flight run picks up where it
+      // left off.
+      return { kind: "boot" };
+    });
+    const stored = loadStoredRun();
+    if (stored) void resumeStored(stored).then(setPhase);
+  }, []);
 
-  const handleCreated = useCallback(
-    (response: CreateRunResponse, files: File[]) => {
-      const creds: RunCredentials = {
-        runId: response.runId,
-        runSecret: response.runSecret,
-      };
-      saveStoredRun(creds);
-      setPhase({ kind: "uploading", creds, files });
-    },
-    [],
-  );
+  const handleCreated = useCallback((response: CreateRunResponse, files: File[]) => {
+    const creds: RunCredentials = {
+      runId: response.runId,
+      runSecret: response.runSecret,
+    };
+    saveStoredRun(creds);
+    setPhase({ kind: "uploading", creds, files });
+  }, []);
 
   const handleUploadsDone = useCallback(() => {
     setPhase((current) =>
@@ -74,6 +116,17 @@ export default function Page() {
     setPhase({ kind: "create" });
   }, []);
 
+  const switchCredentials = useCallback(async () => {
+    clearStoredRun();
+    try {
+      await clearCredentials();
+    } catch {
+      /* best effort */
+    }
+    setCredentials(emptyCredentialStatus());
+    setPhase({ kind: "credentials" });
+  }, []);
+
   const retryResume = useCallback(() => {
     const stored = loadStoredRun();
     if (!stored) {
@@ -85,12 +138,28 @@ export default function Page() {
   }, []);
 
   const activeRunId = "creds" in phase ? phase.creds.runId : undefined;
-  const showClear = phase.kind !== "create" && phase.kind !== "boot";
+  const showClear = phase.kind !== "create" && phase.kind !== "boot" && phase.kind !== "credentials";
+  const showDisconnect =
+    phase.kind !== "boot" && phase.kind !== "credentials" && credentials?.connected === true;
 
   return (
-    <Shell onClear={showClear ? clearRun : undefined} runId={activeRunId}>
+    <Shell
+      onClear={showClear ? clearRun : undefined}
+      onDisconnect={showDisconnect ? switchCredentials : undefined}
+      runId={activeRunId}
+      credentials={phase.kind === "boot" || phase.kind === "credentials" ? null : credentials}
+    >
       {phase.kind === "boot" && <BootCard />}
-      {phase.kind === "create" && <CreateScreen onCreated={handleCreated} />}
+      {phase.kind === "credentials" && (
+        <CredentialScreen
+          initialStatus={credentials ?? emptyCredentialStatus()}
+          initialError={phase.initialError ?? null}
+          onConnected={handleCredentialsConnected}
+        />
+      )}
+      {phase.kind === "create" && credentials?.connected && (
+        <CreateScreen credentials={credentials} onCreated={handleCreated} />
+      )}
       {phase.kind === "uploading" && (
         <UploadScreen
           creds={phase.creds}
@@ -124,13 +193,9 @@ async function resumeStored(creds: RunCredentials): Promise<Phase> {
       return { kind: "complete", creds };
     }
     if (status.status === "uploading") {
-      // The user navigated away before uploads finished; the File objects from
-      // the previous session can't be recovered, so reset to the create screen.
       clearStoredRun();
       return { kind: "create" };
     }
-    // Both in-flight and terminal statuses route to the processing card —
-    // terminal status renders its own error state and recovery actions.
     return { kind: "processing", creds, initialStatus: status };
   } catch (err) {
     if (err instanceof ApiError && (err.status === 403 || err.status === 404)) {
@@ -145,26 +210,33 @@ async function resumeStored(creds: RunCredentials): Promise<Phase> {
   }
 }
 
-type FaviconState = "default" | "complete";
+function readAndStripCredentialFlag(): "connected" | "failed" | null {
+  if (typeof window === "undefined") return null;
+  const url = new URL(window.location.href);
+  const flag = url.searchParams.get("credentials");
+  if (!flag) return null;
+  url.searchParams.delete("credentials");
+  window.history.replaceState({}, "", url.toString());
+  if (flag === "openrouter_connected") return "connected";
+  if (flag === "openrouter_failed") return "failed";
+  return null;
+}
 
-function setFavicon(state: FaviconState): void {
-  if (typeof document === "undefined") return;
-  const color = state === "complete" ? "#2D7A4A" : "#0E0E0E";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="7" fill="${color}"/></svg>`;
-  const href = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-  let link = document.querySelector<HTMLLinkElement>("link[rel='icon']");
-  if (!link) {
-    link = document.createElement("link");
-    link.rel = "icon";
-    document.head.appendChild(link);
-  }
-  link.href = href;
+function emptyCredentialStatus(): CredentialStatus {
+  return {
+    connected: false,
+    mode: null,
+    source: null,
+    label: null,
+    connectedAt: null,
+    expiresAt: null,
+    providers: [],
+  };
 }
 
 function BootCard() {
   return (
     <section className="card">
-      <p className="card__eyebrow">Loading</p>
       <h1 className="card__title">
         <span className="spinner" /> Restoring session
       </h1>
@@ -184,7 +256,6 @@ function ResumeErrorCard({
 }) {
   return (
     <section className="card card--lift">
-      <p className="card__eyebrow">Could not resume</p>
       <h1 className="card__title">Connection lost.</h1>
       <p className="card__sub">{message}</p>
       <div className="card__section btn-row">

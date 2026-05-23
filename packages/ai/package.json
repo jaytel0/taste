@@ -10,7 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@ai-sdk/gateway": "^2.0.15",
+    "@ai-sdk/anthropic": "^3.0.79",
+    "@ai-sdk/openai": "^3.0.65",
+    "@openrouter/ai-sdk-provider": "^2.9.0",
     "ai": "^6.0.12",
     "zod": "^4.1.13"
   },

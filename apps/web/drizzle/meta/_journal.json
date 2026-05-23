@@ -8,6 +8,27 @@
       "when": 1779412221495,
       "tag": "0000_last_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779546643113,
+      "tag": "0001_hot_stick",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779549107826,
+      "tag": "0002_concerned_red_wolf",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779550643965,
+      "tag": "0003_thin_leech",
+      "breakpoints": true
     }
   ]
 }

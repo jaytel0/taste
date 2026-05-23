@@ -8,7 +8,7 @@ import { analysisModels, env } from "@/config";
 import {
   appendRunEvent,
   countArtifacts,
-  decryptRunToken,
+  decryptRunCredentials,
   getArtifact,
   getImageByImageId,
   listArtifacts,
@@ -16,11 +16,13 @@ import {
   setRawAnalysisCount,
   setSynthesizedNoteCount,
   storeArtifact,
+  throwIfRunCanceled,
 } from "@/db/repository";
 import type { ReferenceImage } from "@/db/schema";
 import { downloadBlobBytes, putTextArtifact } from "@/storage/blob";
 import {
   AdaptiveLimiter,
+  createRunAbortWatcher,
   errorMessage,
   mapConcurrent,
   providerFromModel,
@@ -37,7 +39,9 @@ export async function processImageStage(runId: string, activeImages: ReferenceIm
 
   await mapConcurrent(activeImages, analyzeConcurrency, async (image) => {
     if (!image.imageId) return;
+    await throwIfRunCanceled(runId);
     await analyzeOneImage(runId, image.imageId);
+    await throwIfRunCanceled(runId);
     synthesisJobs.push(synthLimiter.run(() => synthesizeOneNote(runId, image.imageId ?? "")));
   });
 
@@ -45,10 +49,11 @@ export async function processImageStage(runId: string, activeImages: ReferenceIm
 }
 
 async function analyzeOneImage(runId: string, imageId: string) {
+  await throwIfRunCanceled(runId);
   const run = await requireRun(runId);
   const image = await getImageByImageId(runId, imageId);
-  const imageBytes = await downloadBlobBytes(image.downloadUrl ?? image.blobUrl);
-  const token = decryptRunToken(run);
+  const imageBytes = await downloadBlobBytes(image.pathname);
+  const credentials = decryptRunCredentials(run);
   const models = analysisModels();
   const existing = (await listArtifacts(runId, "raw_analysis")).filter(
     (artifact) => artifact.imageId === imageId,
@@ -60,12 +65,14 @@ async function analyzeOneImage(runId: string, imageId: string) {
     return;
   }
 
+  const abort = createRunAbortWatcher(runId);
   const results = await Promise.allSettled(
     missingModels.map(async (model) => ({
       model,
       result: await runImageAnalysis({
-        aiGatewayToken: token || undefined,
+        credentials,
         model,
+        abortSignal: abort.signal,
         image: {
           id: image.imageId ?? imageId,
           basename: image.basename,
@@ -79,9 +86,11 @@ async function analyzeOneImage(runId: string, imageId: string) {
         },
       }),
     })),
-  );
+  ).finally(() => abort.dispose());
+  await throwIfRunCanceled(runId);
 
   for (const [index, resultItem] of results.entries()) {
+    await throwIfRunCanceled(runId);
     const model =
       resultItem.status === "fulfilled"
         ? resultItem.value.model
@@ -90,7 +99,7 @@ async function analyzeOneImage(runId: string, imageId: string) {
       resultItem.status === "fulfilled"
         ? resultItem.value.result
         : softFailedGenerationResult(
-            `Raw analysis failed after retries for ${imageId} with ${model}.`,
+            `Raw analysis failed after retries for ${imageId}.`,
             resultItem.reason,
           );
     const content = withFrontmatter(
@@ -139,10 +148,106 @@ async function analyzeOneImage(runId: string, imageId: string) {
   });
 }
 
-async function synthesizeOneNote(runId: string, imageId: string) {
+export async function analyzeImageModel(runId: string, imageId: string, model: string) {
+  await throwIfRunCanceled(runId);
+  const existing = await getArtifact({ runId, type: "raw_analysis", imageId, model });
+  if (existing) {
+    await setRawAnalysisCount(runId, await countArtifacts(runId, "raw_analysis"));
+    return;
+  }
+
   const run = await requireRun(runId);
   const image = await getImageByImageId(runId, imageId);
-  const imageBytes = await downloadBlobBytes(image.downloadUrl ?? image.blobUrl);
+  const imageBytes = await downloadBlobBytes(image.pathname);
+  let result;
+  let softFailed = false;
+  let failure: unknown;
+  try {
+    const abort = createRunAbortWatcher(runId);
+    result = await runImageAnalysis({
+      credentials: decryptRunCredentials(run),
+      model,
+      abortSignal: abort.signal,
+      image: {
+        id: image.imageId ?? imageId,
+        basename: image.basename,
+        width: image.width,
+        height: image.height,
+        bytes: image.bytes,
+      },
+      imageInput: {
+        bytes: imageBytes,
+        mediaType: image.contentType,
+      },
+    }).finally(() => abort.dispose());
+  } catch (error) {
+    softFailed = true;
+    failure = error;
+    result = softFailedGenerationResult(`Raw analysis failed after retries for ${imageId}.`, error);
+  }
+  await throwIfRunCanceled(runId);
+
+  const content = withFrontmatter(
+    {
+      imageId,
+      image: image.pathname,
+      model,
+      proxyProvider: providerFromModel(model),
+      softFailed,
+      createdAt: new Date().toISOString(),
+    },
+    result.text,
+  );
+  const stored = await putTextArtifact(
+    `runs/${runId}/02-image-notes/raw/${imageId}/${modelSlug(model)}.md`,
+    content,
+  );
+  await storeArtifact({
+    runId,
+    type: "raw_analysis",
+    imageId,
+    model,
+    pathname: stored.pathname,
+    blobUrl: stored.blobUrl,
+    content,
+    bytes: stored.bytes,
+    metadata: {
+      usage: result.usage,
+      responseModel: result.model,
+      softFailed,
+      error: softFailed ? errorMessage(failure) : undefined,
+    },
+  });
+  if (softFailed) {
+    await appendRunEvent(runId, "image.analysis.soft_failed", `Soft-failed ${imageId} ${model}`, {
+      imageId,
+      model,
+      error: errorMessage(failure),
+    });
+  }
+  await setRawAnalysisCount(runId, await countArtifacts(runId, "raw_analysis"));
+  await appendRunEvent(runId, "image.model_analyzed", `Analyzed ${imageId} ${model}`, {
+    imageId,
+    model,
+  });
+}
+
+export async function rawAnalysisReady(runId: string, imageId: string): Promise<boolean> {
+  const rawAnalyses = (await listArtifacts(runId, "raw_analysis")).filter(
+    (artifact) => artifact.imageId === imageId,
+  );
+  return rawAnalyses.length >= analysisModels().length;
+}
+
+export async function synthesizedNoteCount(runId: string): Promise<number> {
+  return countArtifacts(runId, "synthesized_note");
+}
+
+export async function synthesizeOneNote(runId: string, imageId: string) {
+  await throwIfRunCanceled(runId);
+  const run = await requireRun(runId);
+  const image = await getImageByImageId(runId, imageId);
+  const imageBytes = await downloadBlobBytes(image.pathname);
   const existing = await getArtifact({ runId, type: "synthesized_note", imageId });
   if (existing) {
     await setSynthesizedNoteCount(runId, await countArtifacts(runId, "synthesized_note"));
@@ -163,9 +268,12 @@ async function synthesizeOneNote(runId: string, imageId: string) {
   let softFailed = false;
   let result;
   try {
+    await throwIfRunCanceled(runId);
+    const abort = createRunAbortWatcher(runId);
     result = await synthesizeImageNote({
-      aiGatewayToken: decryptRunToken(run) || undefined,
+      credentials: decryptRunCredentials(run),
       model: env().SYNTHESIS_MODEL,
+      abortSignal: abort.signal,
       image: {
         id: image.imageId ?? imageId,
         basename: image.basename,
@@ -178,7 +286,7 @@ async function synthesizeOneNote(runId: string, imageId: string) {
         mediaType: image.contentType,
       },
       analyses,
-    });
+    }).finally(() => abort.dispose());
   } catch (error) {
     softFailed = true;
     result = softFailedGenerationResult(
@@ -191,6 +299,7 @@ async function synthesizeOneNote(runId: string, imageId: string) {
       error: errorMessage(error),
     });
   }
+  await throwIfRunCanceled(runId);
 
   const content = withFrontmatter(
     {

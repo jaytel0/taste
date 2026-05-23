@@ -51,14 +51,16 @@ Provide 10-20 concise, domain-independent tags.
 
 export function buildSynthesisPrompt(input: {
   image: TasteImage;
-  analyses: Array<{ model: string; text: string }>;
+  analyses: Array<{ model?: string | null; text: string }>;
 }): string {
-  const [first, second] = input.analyses;
+  const analysisSections = buildAnonymousAnalysisSections(input.analyses);
   return `You are rectifying two independent visual analyses of the same UI screenshot into one canonical master vision note for a design taste corpus. The screenshot is a verified, human-curated example of good visual design. Your job is to extract aesthetic DNA, not product meaning.
 
 This master note is about aesthetics and taste only: style, layout, hierarchy, color, shadows, materials, spacing, composition, density, rhythm, visual tension, polish, restraint, and vibe. The screen's domain, scenario, copy, app category, user names, depicted objects, and functional workflow are not the target. Treat them as incidental raw material unless they reveal a broader aesthetic move.
 
 Do not preserve conclusions like "concierge," "hospitable," "guest-focused," "travel-oriented," or other domain/subject-matter interpretations. Translate those into domain-independent visual ideas: quiet generosity, centered hero mass, restrained semantic accent, soft modular surfaces, tactile counterpoint, calm density, etc.
+
+The analyses below are intentionally anonymized and source-neutral. Treat them as peer evidence. Do not infer which model produced either analysis, and do not favor an analysis because it resembles your own wording. Adjudicate disagreements by looking at the image again.
 
 Look at the image again. Use the two analyses as evidence, but correct anything that seems too functional, content-specific, overstated, brand-specific, or not actually visible. Preserve sharp aesthetic insights. Remove duplication. The output should become the definitive per-image taste note for later cross-image synthesis.
 
@@ -67,15 +69,7 @@ Image metadata:
 - filename: ${input.image.basename}
 - dimensions: ${formatDimensions(input.image)}
 
-Analysis A (${first?.model ?? "unknown"}):
----
-${first?.text ?? ""}
----
-
-Analysis B (${second?.model ?? "unknown"}):
----
-${second?.text ?? ""}
----
+${analysisSections}
 
 Write the master note with this structure:
 
@@ -99,6 +93,49 @@ Screen content, functionality, product category, copy, depicted objects, names, 
 ## 6. Evidence tags
 15-25 concise, domain-independent aesthetic tags that will help cluster this image with others later.
 `;
+}
+
+function buildAnonymousAnalysisSections(
+  analyses: Array<{ model?: string | null; text: string }>,
+): string {
+  const sourceModels = analyses
+    .map((analysis) => analysis.model)
+    .filter((model): model is string => typeof model === "string" && model.trim().length > 0);
+
+  return analyses
+    .map((analysis, index) => {
+      const text = anonymizeAnalysisText(analysis.text, sourceModels);
+      return `Analysis ${index + 1}:\n---\n${text}\n---`;
+    })
+    .join("\n\n");
+}
+
+function anonymizeAnalysisText(text: string, sourceModels: string[]): string {
+  const body = stripLeadingFrontmatter(text);
+  return modelAliases(sourceModels).reduce(
+    (current, alias) => current.replace(new RegExp(escapeRegExp(alias), "gi"), "[redacted]"),
+    body,
+  );
+}
+
+function stripLeadingFrontmatter(markdown: string): string {
+  return markdown.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "").trim();
+}
+
+function modelAliases(models: string[]): string[] {
+  return Array.from(
+    new Set(
+      models.flatMap((model) => {
+        const bare = model.includes("/") ? (model.split("/").pop() ?? model) : model;
+        const spaced = bare.replace(/[-_]+/g, " ");
+        return [model, bare, spaced];
+      }),
+    ),
+  ).filter((alias) => alias.length > 0);
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export function buildChunkPrompt(spec: ChunkSpec): string {

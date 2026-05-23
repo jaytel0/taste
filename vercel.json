@@ -4,5 +4,15 @@
   "installCommand": "npm install",
   "buildCommand": "npm run build --workspace @taste/web",
   "outputDirectory": "apps/web/.next",
-  "devCommand": "npm run dev:web"
+  "devCommand": "npm run dev:web",
+  "crons": [
+    {
+      "path": "/api/jobs/drain",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/cleanup",
+      "schedule": "0 5 * * *"
+    }
+  ]
 }

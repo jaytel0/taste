@@ -4,11 +4,14 @@ import { z } from "zod";
 
 import { ACCEPTED_IMAGE_TYPES, env } from "@/config";
 import {
+  requireRun,
   registerUploadedImage,
   uploadedImageCount,
   verifyRunSecret,
 } from "@/db/repository";
 import { errorResponse } from "@/http/errors";
+import { assertSameOrigin, enforceRateLimit } from "@/http/security";
+import { deleteBlobPathnames } from "@/storage/blob";
 
 const clientPayloadSchema = z.object({
   runId: z.string().uuid(),
@@ -21,6 +24,8 @@ const clientPayloadSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    await assertSameOrigin(request);
+    await enforceRateLimit(request, { bucket: "uploads", limit: 1000, windowSeconds: 15 * 60 });
     const body = (await request.json()) as HandleUploadBody;
     const response = await handleUpload({
       body,
@@ -32,6 +37,13 @@ export async function POST(request: NextRequest) {
           throw new Error("Run is no longer accepting uploads");
         }
         const count = await uploadedImageCount(payload.runId);
+        const uploadOrder = payload.uploadOrder ?? count;
+        if (uploadOrder >= run.maxImages) {
+          throw new Error(`Run cannot exceed ${run.maxImages} images`);
+        }
+        if (run.expectedImageCount !== null && uploadOrder >= run.expectedImageCount) {
+          throw new Error(`Run expects ${run.expectedImageCount} images`);
+        }
         if (count >= run.maxImages) {
           throw new Error(`Run cannot exceed ${run.maxImages} images`);
         }
@@ -50,8 +62,7 @@ export async function POST(request: NextRequest) {
           addRandomSuffix: true,
           tokenPayload: JSON.stringify({
             runId: payload.runId,
-            runSecret: payload.runSecret,
-            uploadOrder: payload.uploadOrder ?? count,
+            uploadOrder,
             originalPathname: pathname,
             fileName: payload.fileName,
             contentType: payload.contentType,
@@ -63,7 +74,6 @@ export async function POST(request: NextRequest) {
         const payload = z
           .object({
             runId: z.string().uuid(),
-            runSecret: z.string().min(1),
             uploadOrder: z.number().int().nonnegative(),
             originalPathname: z.string().optional(),
             fileName: z.string().min(1).optional(),
@@ -71,21 +81,35 @@ export async function POST(request: NextRequest) {
             size: z.number().int().nonnegative().optional(),
           })
           .parse(JSON.parse(tokenPayload ?? "{}"));
-        await verifyRunSecret(payload.runId, payload.runSecret);
-        await registerUploadedImage({
-          runId: payload.runId,
-          uploadOrder: payload.uploadOrder,
-          basename:
-            payload.fileName ??
-            payload.originalPathname?.split("/").pop() ??
-            blob.pathname.split("/").pop() ??
-            "image",
-          blobUrl: blob.url,
-          downloadUrl: "downloadUrl" in blob ? String(blob.downloadUrl) : null,
-          pathname: blob.pathname,
-          contentType: blob.contentType ?? payload.contentType ?? "application/octet-stream",
-          bytes: (blob as { size?: number }).size ?? payload.size ?? 0,
-        });
+        try {
+          const run = await requireRun(payload.runId);
+          if (run.status !== "uploading") {
+            throw new Error("Run is no longer accepting uploads");
+          }
+          if (payload.uploadOrder >= run.maxImages) {
+            throw new Error(`Run cannot exceed ${run.maxImages} images`);
+          }
+          if (run.expectedImageCount !== null && payload.uploadOrder >= run.expectedImageCount) {
+            throw new Error(`Run expects ${run.expectedImageCount} images`);
+          }
+          await registerUploadedImage({
+            runId: payload.runId,
+            uploadOrder: payload.uploadOrder,
+            basename:
+              payload.fileName ??
+              payload.originalPathname?.split("/").pop() ??
+              blob.pathname.split("/").pop() ??
+              "image",
+            blobUrl: blob.url,
+            downloadUrl: "downloadUrl" in blob ? String(blob.downloadUrl) : null,
+            pathname: blob.pathname,
+            contentType: blob.contentType ?? payload.contentType ?? "application/octet-stream",
+            bytes: (blob as { size?: number }).size ?? payload.size ?? 0,
+          });
+        } catch (error) {
+          await deleteBlobPathnames([blob.pathname]).catch(() => {});
+          throw error;
+        }
       },
     });
     return Response.json(response);

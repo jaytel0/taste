@@ -3,7 +3,7 @@ import { NextRequest } from "next/server";
 import { verifyRunSecret } from "@/db/repository";
 
 export function readRunSecret(request: NextRequest): string | null {
-  return request.headers.get("x-run-secret") ?? request.nextUrl.searchParams.get("runSecret");
+  return request.headers.get("x-run-secret");
 }
 
 export async function requireRunAccess(request: NextRequest, runId: string) {

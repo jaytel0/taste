@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 
+import type { CredentialStatus } from "../_lib/api";
 import { truncateId } from "../_lib/format";
 
 const SOURCE_URL = "https://github.com/jaytel0/taste";
@@ -9,15 +10,24 @@ const SOURCE_URL = "https://github.com/jaytel0/taste";
 type ShellProps = {
   children: ReactNode;
   onClear?: (() => void) | undefined;
+  onDisconnect?: (() => void) | undefined;
   runId?: string | undefined;
+  credentials?: CredentialStatus | null | undefined;
 };
 
-export function Shell({ children, onClear, runId }: ShellProps) {
+export function Shell({
+  children,
+  onClear,
+  onDisconnect,
+  runId,
+  credentials,
+}: ShellProps) {
+  const showFooter = Boolean(runId || onClear || onDisconnect || credentials?.connected);
   return (
     <div className="shell">
       <header className="shell__head">
         <span className="shell__mark">
-          <span className="shell__dot" aria-hidden />
+          <img className="shell__logo" src="/taste.png" alt="" aria-hidden />
           Taste
         </span>
         <a
@@ -32,20 +42,41 @@ export function Shell({ children, onClear, runId }: ShellProps) {
         </a>
       </header>
       <main className="shell__main">{children}</main>
-      {(runId || onClear) && (
+      {showFooter && (
         <footer className="shell__foot">
-          <span className="mono">{runId ? truncateId(runId) : ""}</span>
-          {onClear ? (
-            <button type="button" className="btn btn--ghost btn--sm" onClick={onClear}>
-              Clear current run
-            </button>
-          ) : (
-            <span />
-          )}
+          <div className="shell__foot-left">
+            {credentials?.connected && (
+              <span className="credchip" aria-label={`Connected via ${describeMode(credentials)}`}>
+                <span className="credchip__dot" />
+                <span className="credchip__label">{describeMode(credentials)}</span>
+              </span>
+            )}
+            {runId && <span className="mono">{truncateId(runId)}</span>}
+          </div>
+          <div className="shell__foot-right">
+            {onDisconnect && (
+              <button type="button" className="btn btn--ghost btn--sm" onClick={onDisconnect}>
+                Disconnect
+              </button>
+            )}
+            {onClear && (
+              <button type="button" className="btn btn--ghost btn--sm" onClick={onClear}>
+                Clear current run
+              </button>
+            )}
+          </div>
         </footer>
       )}
     </div>
   );
+}
+
+function describeMode(status: CredentialStatus): string {
+  if (status.mode === "openrouter") {
+    return "OpenRouter";
+  }
+  if (status.mode === "direct") return "Direct API keys";
+  return "Connected";
 }
 
 function GithubGlyph() {

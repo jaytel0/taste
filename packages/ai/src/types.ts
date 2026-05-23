@@ -13,6 +13,21 @@ export type ImageInput = {
   mediaType: string;
 };
 
+export type AiCredentialMode =
+  | "openrouter"
+  | "direct";
+
+export type AiProviderCredentials =
+  | {
+      mode: "openrouter";
+      openrouterApiKey: string;
+    }
+  | {
+      mode: "direct";
+      openaiApiKey: string;
+      anthropicApiKey: string;
+    };
+
 export type TextGenerationResult = {
   text: string;
   model: string;
@@ -27,18 +42,20 @@ export type RawAnalysisInput = {
   image: TasteImage;
   imageInput: ImageInput;
   model: ModelId;
-  aiGatewayToken?: string | undefined;
+  credentials?: AiProviderCredentials | undefined;
+  abortSignal?: AbortSignal | undefined;
 };
 
 export type SynthesizeImageNoteInput = {
   image: TasteImage;
   imageInput: ImageInput;
   analyses: Array<{
-    model: ModelId;
+    model?: ModelId | null;
     text: string;
   }>;
   model: ModelId;
-  aiGatewayToken?: string | undefined;
+  credentials?: AiProviderCredentials | undefined;
+  abortSignal?: AbortSignal | undefined;
 };
 
 export type ChunkSpec = {

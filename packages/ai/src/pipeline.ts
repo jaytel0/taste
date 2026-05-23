@@ -9,8 +9,9 @@ import {
   buildSkillPrompt,
   buildSynthesisPrompt,
 } from "./prompts";
-import { generateGatewayText, generateGatewayVisionText } from "./gateway";
+import { generateProviderText, generateProviderVisionText } from "./providers";
 import type {
+  AiProviderCredentials,
   ChunkSpec,
   RawAnalysisInput,
   RuleChunkResult,
@@ -21,20 +22,21 @@ import type {
 export async function analyzeImage(
   input: RawAnalysisInput,
 ): Promise<TextGenerationResult> {
-  return generateGatewayVisionText({
-    aiGatewayToken: input.aiGatewayToken,
+  return generateProviderVisionText({
+    credentials: input.credentials,
     model: input.model,
     prompt: buildAnalysisPrompt(input.image),
     image: input.imageInput,
     maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS.analysis,
+    abortSignal: input.abortSignal,
   });
 }
 
 export async function synthesizeImageNote(
   input: SynthesizeImageNoteInput,
 ): Promise<TextGenerationResult> {
-  return generateGatewayVisionText({
-    aiGatewayToken: input.aiGatewayToken,
+  return generateProviderVisionText({
+    credentials: input.credentials,
     model: input.model,
     prompt: buildSynthesisPrompt({
       image: input.image,
@@ -42,45 +44,52 @@ export async function synthesizeImageNote(
     }),
     image: input.imageInput,
     maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS.synthesizedNote,
+    abortSignal: input.abortSignal,
   });
 }
 
 export async function extractRuleChunk(input: {
-  aiGatewayToken?: string | undefined;
+  credentials?: AiProviderCredentials | undefined;
   model: string;
   chunk: ChunkSpec;
+  abortSignal?: AbortSignal | undefined;
 }): Promise<TextGenerationResult> {
-  return generateGatewayText({
-    aiGatewayToken: input.aiGatewayToken,
+  return generateProviderText({
+    credentials: input.credentials,
     model: input.model,
     prompt: buildChunkPrompt(input.chunk),
     maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS.ruleChunk,
+    abortSignal: input.abortSignal,
   });
 }
 
 export async function synthesizeRuleSet(input: {
-  aiGatewayToken?: string | undefined;
+  credentials?: AiProviderCredentials | undefined;
   model: string;
   chunkResults: RuleChunkResult[];
+  abortSignal?: AbortSignal | undefined;
 }): Promise<TextGenerationResult> {
-  return generateGatewayText({
-    aiGatewayToken: input.aiGatewayToken,
+  return generateProviderText({
+    credentials: input.credentials,
     model: input.model,
     prompt: buildRuleSetPrompt(input.chunkResults),
     maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS.ruleSet,
+    abortSignal: input.abortSignal,
   });
 }
 
 export async function generateSkill(input: {
-  aiGatewayToken?: string | undefined;
+  credentials?: AiProviderCredentials | undefined;
   model: string;
   ruleSet: string;
+  abortSignal?: AbortSignal | undefined;
 }): Promise<TextGenerationResult> {
-  const result = await generateGatewayText({
-    aiGatewayToken: input.aiGatewayToken,
+  const result = await generateProviderText({
+    credentials: input.credentials,
     model: input.model,
     prompt: buildSkillPrompt(input.ruleSet),
     maxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS.skill,
+    abortSignal: input.abortSignal,
   });
   const body = result.text.trim();
   return {

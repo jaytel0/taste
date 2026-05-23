@@ -65,7 +65,7 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
       updateItem(item.uploadOrder, { state: "uploading", error: undefined });
       try {
         await upload(item.file.name, item.file, {
-          access: "public",
+          access: "private",
           handleUploadUrl: "/api/uploads",
           contentType: item.file.type,
           clientPayload: JSON.stringify({
@@ -157,8 +157,7 @@ export function UploadScreen({ creds, files, onComplete, onAbandon }: UploadScre
 
   return (
     <section className="card card--lift">
-      <div className="card__head-row">
-        <p className="card__eyebrow">Uploading</p>
+      <div className="card__top-action">
         <button
           type="button"
           className="btn btn--ghost btn--sm"

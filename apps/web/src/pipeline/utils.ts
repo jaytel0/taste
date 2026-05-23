@@ -1,3 +1,6 @@
+import { redactSecrets } from "@/credentials/redact";
+import { getRun } from "@/db/repository";
+
 export async function mapConcurrent<T>(
   items: T[],
   concurrency: number,
@@ -64,6 +67,23 @@ export class AdaptiveLimiter {
   }
 }
 
+export function createRunAbortWatcher(runId: string) {
+  const controller = new AbortController();
+  const interval = setInterval(async () => {
+    try {
+      const run = await getRun(runId);
+      if (!run || run.status === "canceled") controller.abort();
+    } catch {
+      controller.abort();
+    }
+  }, 2000);
+  interval.unref?.();
+  return {
+    signal: controller.signal,
+    dispose: () => clearInterval(interval),
+  };
+}
+
 export function withFrontmatter(metadata: Record<string, unknown>, body: string): string {
   return [
     "---",
@@ -78,7 +98,7 @@ export function withFrontmatter(metadata: Record<string, unknown>, body: string)
 export function providerFromModel(model: string): string {
   if (model.startsWith("anthropic/")) return "anthropic";
   if (model.startsWith("openai/")) return "openai";
-  return model.split("/")[0] ?? "gateway";
+  return model.split("/")[0] ?? "unknown";
 }
 
 export function softFailedGenerationResult(message: string, error: unknown, evidence = "") {
@@ -102,7 +122,7 @@ export function softFailedGenerationResult(message: string, error: unknown, evid
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  return redactSecrets(error instanceof Error ? error.message : String(error));
 }
 
 function isThrottleLike(error: unknown): boolean {

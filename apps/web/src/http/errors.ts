@@ -1,8 +1,32 @@
 import { ZodError } from "zod";
 
 import { AppConfigError } from "@/config";
+import { redactSecrets } from "@/credentials/redact";
+
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
 
 export function errorResponse(error: unknown, fallbackStatus = 400): Response {
+  if (error instanceof HttpError) {
+    return Response.json(
+      {
+        error: {
+          code: error.code,
+          message: error.message,
+        },
+      },
+      { status: error.status },
+    );
+  }
+
   if (error instanceof AppConfigError) {
     return Response.json(
       {
@@ -39,7 +63,7 @@ export function errorResponse(error: unknown, fallbackStatus = 400): Response {
     );
   }
 
-  const message = error instanceof Error ? error.message : String(error);
+  const message = redactSecrets(error instanceof Error ? error.message : String(error));
   return Response.json(
     {
       error: {

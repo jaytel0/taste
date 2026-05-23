@@ -15,7 +15,7 @@ export async function indexImages(runId: string) {
   let activeIndex = 0;
 
   for (const image of uploaded) {
-    const bytes = await downloadBlobBytes(image.downloadUrl ?? image.blobUrl);
+    const bytes = await downloadBlobBytes(image.pathname);
     const digest = sha256(bytes);
     const size = dimensions(bytes);
     const duplicateOfImageId = seen.get(digest) ?? null;

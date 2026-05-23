@@ -51,6 +51,25 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Kill widows globally. `pretty` covers all multi-line text (rebalances
+   the last few lines), and `balance` is applied separately to short
+   headline / subhead blocks where the full-pass balance is worth it. */
+  text-wrap: pretty;
+}
+
+h1,
+h2,
+h3,
+h4,
+.card__title,
+.card__sub,
+.field__hint,
+.manualform__hint,
+.events__title,
+.thumbcluster__title,
+.field__label,
+.btn-row__caption {
+  text-wrap: balance;
 }
 
 body {
@@ -94,8 +113,8 @@ a {
 .input-wrap__toggle:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 2px var(--canvas),
-    0 0 0 4px var(--text);
+    0 0 0 1px var(--surface),
+    0 0 0 2.5px var(--text);
 }
 
 .dropzone:focus-visible {
@@ -139,21 +158,23 @@ a {
 .shell__mark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 13px;
+  gap: 6px;
+  font-size: 16px;
   font-weight: 500;
-  letter-spacing: 0;
+  letter-spacing: -0.005em;
   color: var(--text);
 }
 
-.shell__dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-pill);
-  /* Keep the wordmark neutral so the live processing pill is the only
-     accent surface on screen. */
-  background: var(--text);
-  display: inline-block;
+.shell__logo {
+  /* 1.5× the original 16px mark. Soft low-opacity shadow with blur larger
+     than offset so the logo reads as a small lifted token rather than a
+     flat sticker on the canvas. */
+  width: 24px;
+  height: 24px;
+  display: block;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 2px 4px rgba(15, 15, 15, 0.10))
+          drop-shadow(0 6px 14px rgba(15, 15, 15, 0.14));
 }
 
 .shell__source {
@@ -206,8 +227,59 @@ a {
   margin-top: 24px;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 16px;
   font-size: 12px;
   color: var(--text-3);
+}
+
+.shell__foot-left,
+.shell__foot-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.shell__foot-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.shell__foot-right {
+  flex-shrink: 0;
+}
+
+/* Connected credential chip in the footer. Neutral pale fill, single small
+   accent dot — so it never competes with the live processing pill. */
+.credchip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 12px 0 10px;
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+  max-width: 60%;
+  overflow: hidden;
+}
+
+.credchip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.credchip__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Card surfaces ------------------------------------------------------ */
@@ -224,16 +296,10 @@ a {
   box-shadow: var(--shadow-lift);
 }
 
-.card__head-row {
+.card__top-action {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 0 0 16px;
-}
-
-.card__head-row .card__eyebrow {
-  margin: 0;
+  justify-content: flex-end;
+  margin: 0 0 12px;
 }
 
 @keyframes card-enter {
@@ -245,15 +311,6 @@ a {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.card__eyebrow {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-3);
-  margin: 0 0 16px;
 }
 
 .card__title {
@@ -285,7 +342,7 @@ a {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .field__label {
@@ -293,7 +350,7 @@ a {
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 
 .field__hint {
@@ -494,25 +551,83 @@ a {
   pointer-events: none;
 }
 
+/* File panel — once files exist, the panel itself acts as the drop target.
+   Replaces the big empty Dropzone so the screen keeps one focal mass
+   instead of two stacked containers showing the same summary. */
+
+.filepanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--radius-panel);
+  /* Flush with the card's content rail — no extra horizontal padding, so the
+     count, thumbnails, and Start run button all share one left edge. */
+  padding: 0;
+  margin: 0;
+  transition: background 160ms ease, box-shadow 160ms ease;
+  animation: filepanel-enter 220ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* Drag-active highlight bleeds 16px outside the content rail on each side so
+   the tint reads as "drop zone" without horizontally shifting the row
+   content beneath it. Sits on a pseudo-element behind the rows. */
+.filepanel::before {
+  content: "";
+  position: absolute;
+  inset: -10px -16px;
+  background: var(--surface-2);
+  border-radius: var(--radius-panel);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+  z-index: 0;
+}
+
+.filepanel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.filepanel--active::before {
+  opacity: 1;
+}
+
+@keyframes filepanel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.filepanel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 4px 0 12px;
+}
+
+.filepanel__head .muted {
+  font-size: 12px;
+}
+
+.filepanel__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 /* File list --------------------------------------------------------- */
 
 .filelist {
   display: flex;
   flex-direction: column;
-  margin-top: 8px;
-}
-
-.filelist__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 24px;
-  margin-bottom: 4px;
-}
-
-.filelist__head .muted {
-  font-size: 12px;
+  margin-top: 0;
 }
 
 .filelist--scroll {
@@ -555,7 +670,7 @@ a {
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 16px;
-  padding: 14px 4px;
+  padding: 12px 0;
 }
 
 .filerow--withthumb {
@@ -897,6 +1012,194 @@ a {
   color: var(--text);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* Disclosure trigger — a quiet ghost button that sits subordinate to the
+   primary action. Replaces the old full-width pale-pill <details> summary,
+   which visually competed with the Connect OpenRouter primary button. */
+
+.disclose {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 4px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  border-radius: var(--radius-pill);
+  transition: color 120ms ease;
+}
+
+.disclose:hover {
+  color: var(--text);
+}
+
+.disclose:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--text);
+}
+
+.disclose svg {
+  color: var(--text-3);
+  /* iOS-style soft easing on the chevron flip so it tracks the panel's
+     own height animation visually. */
+  transition:
+    transform 320ms cubic-bezier(0.32, 0.72, 0, 1),
+    color 120ms ease;
+}
+
+.disclose:hover svg {
+  color: var(--text-2);
+}
+
+.disclose[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* Custom accordion — the grid-template-rows 0fr↔1fr trick gives smooth
+   intrinsic-height animation with no JS measurement. We pair it with an
+   inner opacity + translate so the content settles rather than snapping in.
+   Same easing both directions so collapse mirrors expand. */
+
+.accordion {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 360ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.accordion--open {
+  grid-template-rows: 1fr;
+}
+
+.accordion__inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.accordion__content {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 240ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 360ms cubic-bezier(0.32, 0.72, 0, 1);
+  /* Top + side breathing room so focus-ring shadows on the first input have
+     clear space inside the .accordion__inner overflow:hidden box, and the
+     left edge of any focus ring doesn't ride flush against the card's
+     content rail either. */
+  padding: 24px 6px 6px;
+  margin: 0 -6px;
+}
+
+.accordion--open .accordion__content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .accordion,
+  .accordion__content,
+  .disclose svg {
+    transition: none;
+  }
+  /* Keep opacity as a graceful fallback per Emil's reduced-motion rule:
+     soften the change rather than killing it entirely. */
+  .accordion__content {
+    transition: opacity 120ms linear;
+    transform: none;
+  }
+}
+
+/* Slightly tighten the spacing between the primary button row and the
+   small disclosure trigger so they read as one stack rather than two
+   separate card sections. */
+.card__section--tight {
+  margin-top: 12px;
+}
+
+/* Segmented control (manual key kind picker) ---------------------- */
+
+.segmented {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  background: var(--surface);
+  border-radius: var(--radius-pill);
+  align-self: flex-start;
+  box-shadow: 0 1px 0 rgba(15, 15, 15, 0.03) inset;
+}
+
+.segmented__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  background: transparent;
+  transition: color 120ms ease, background 120ms ease;
+}
+
+.segmented__btn:hover:not(.segmented__btn--active) {
+  color: var(--text);
+}
+
+.segmented__btn--active {
+  background: var(--text);
+  color: #fafafa;
+}
+
+.segmented__btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--text);
+}
+
+/* Manual key form ------------------------------------------------- */
+
+.manualform {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.manualform__hint {
+  margin-top: -4px;
+  color: var(--text-2);
+}
+
+/* Inputs nested inside the Advanced panel sit on a pale-gray surface, so
+   they must be white to read as a distinct nested layer. The focus halo
+   also has to match the panel color, not the outer canvas, or it becomes a
+   chunky off-color rectangle. */
+.advanced .input {
+  background: var(--surface);
+}
+
+.advanced .input:focus {
+  background: var(--surface);
+}
+
+.advanced .input:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--surface-2),
+    0 0 0 4px var(--text);
+}
+
+.advanced .input::placeholder {
+  color: var(--text-3);
+}
+
+.advanced__summary {
+  color: var(--text);
 }
 
 /* Notices ----------------------------------------------------------- */

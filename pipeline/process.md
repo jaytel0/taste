@@ -27,7 +27,13 @@ runs/{runId}/04-skill/SKILL.md
 1. Upload up to 100 reference images.
 2. Index uploaded images, dedupe exact duplicates, and assign stable image ids.
 3. For each active image, run the configured raw analysis models in parallel.
-4. As soon as an image's raw analyses finish, synthesize its canonical note.
+4. As soon as an image's raw analyses finish, synthesize its canonical note
+   with `SYNTHESIS_MODEL` (`openai/gpt-5.5` by default). The raw analysis
+   inputs are anonymized before fusion: artifact frontmatter is stripped, model
+   names are not shown in section titles, and known source model ids are
+   redacted from carried-forward error text so the fusion model cannot favor
+   its own analysis. Source model metadata remains only in stored artifact
+   metadata for audit/debugging.
 5. Split synthesized notes into rule chunks.
 6. If there are too many chunks for one clean merge, reduce them through
    intermediate merge layers using `RULE_MERGE_FAN_IN`.
@@ -40,7 +46,7 @@ The app defaults are speed-first with bounded safety:
 
 ```text
 MAX_IMAGES_PER_RUN=100
-ANALYSIS_MODELS=openai/gpt-5.5,anthropic/claude-sonnet-4.6
+ANALYSIS_MODELS=openai/gpt-5.5,anthropic/claude-sonnet-4-6
 SYNTHESIS_MODEL=openai/gpt-5.5
 RULE_MODEL=openai/gpt-5.5
 SKILL_MODEL=openai/gpt-5.5

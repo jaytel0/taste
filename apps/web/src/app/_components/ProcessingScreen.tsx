@@ -155,7 +155,6 @@ export function ProcessingScreen({
 
   return (
     <section className="card card--lift">
-      <p className="card__eyebrow">Pipeline</p>
       <div className="row row--baseline">
         <div className="metric">
           <span className="bigvalue">{failed ? "—" : progress}</span>

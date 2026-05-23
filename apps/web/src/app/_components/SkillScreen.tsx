@@ -80,7 +80,6 @@ export function SkillScreen({ creds, onStartAnother }: SkillScreenProps) {
 
   return (
     <section className="card card--lift">
-      <p className="card__eyebrow">Complete</p>
       <h1 className="card__title">Your taste skill is ready.</h1>
       <p className="card__sub">
         A single SKILL.md captured from the pipeline. Copy it, save it, or start a new run.

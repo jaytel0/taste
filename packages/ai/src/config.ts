@@ -1,6 +1,6 @@
 export const DEFAULT_ANALYSIS_MODELS = [
   "openai/gpt-5.5",
-  "anthropic/claude-sonnet-4.6",
+  "anthropic/claude-sonnet-4-6",
 ] as const;
 
 export const DEFAULT_SYNTHESIS_MODEL = "openai/gpt-5.5";

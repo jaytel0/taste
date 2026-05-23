@@ -17,6 +17,23 @@ if (files.length === 0) throw new Error(`No reference images found in ${referenc
 if (!process.env.BLOB_READ_WRITE_TOKEN) {
   throw new Error("BLOB_READ_WRITE_TOKEN is required for production E2E uploads");
 }
+if (!process.env.INTERNAL_API_SECRET) {
+  throw new Error("INTERNAL_API_SECRET is required for production E2E upload registration");
+}
+if (!process.env.TASTE_E2E_OPENAI_API_KEY || !process.env.TASTE_E2E_ANTHROPIC_API_KEY) {
+  throw new Error("TASTE_E2E_OPENAI_API_KEY and TASTE_E2E_ANTHROPIC_API_KEY are required");
+}
+
+const cookies = [];
+
+await api("/api/credentials/manual", {
+  method: "POST",
+  body: JSON.stringify({
+    mode: "direct",
+    openaiApiKey: process.env.TASTE_E2E_OPENAI_API_KEY,
+    anthropicApiKey: process.env.TASTE_E2E_ANTHROPIC_API_KEY,
+  }),
+});
 
 const run = await api("/api/runs", {
   method: "POST",
@@ -31,13 +48,16 @@ for (const file of files) {
   const name = basename(file);
   const pathname = `e2e/${run.runId}/${String(order + 1).padStart(4, "0")}-${name}`;
   const blob = await put(pathname, bytes, {
-    access: "public",
+    access: "private",
     contentType: contentTypeFor(file),
     addRandomSuffix: false,
   });
   await api(`/api/runs/${run.runId}/images/complete`, {
     method: "POST",
-    headers: { "x-run-secret": run.runSecret },
+    headers: {
+      "x-run-secret": run.runSecret,
+      "x-internal-secret": process.env.INTERNAL_API_SECRET,
+    },
     body: JSON.stringify({
       uploadOrder: order,
       basename: name,
@@ -112,9 +132,13 @@ async function api(path, init = {}) {
     headers: {
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(cookies.length > 0 ? { Cookie: cookies.join("; ") } : {}),
       ...(init.headers || {}),
     },
   });
+  for (const cookie of response.headers.getSetCookie?.() ?? []) {
+    cookies.push(cookie.split(";")[0]);
+  }
   const text = await response.text();
   if (!response.ok) throw new Error(`${init.method || "GET"} ${path} ${response.status}: ${text}`);
   try {
