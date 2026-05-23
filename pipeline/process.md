@@ -4,7 +4,7 @@ This directory now holds only stable pipeline inputs and the current generated
 skill:
 
 ```text
-pipeline/taste/04-skill/SKILL.md            # current reusable taste skill
+pipeline/taste/taste-skill/SKILL.md         # current reusable taste skill
 ```
 
 The production pipeline lives in the Vercel web app under `apps/web` and writes

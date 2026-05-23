@@ -3,7 +3,7 @@
 This directory contains Jaytel's example test output from the Taste pipeline.
 
 ```text
-04-skill/SKILL.md
+taste-skill/SKILL.md
 ```
 
 The private reference images used for this example are not committed. The file

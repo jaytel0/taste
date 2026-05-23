@@ -6,7 +6,8 @@
 
 Taste turns a set of reference images into a reusable `SKILL.md`.
 
-Hosted demo: `https://taste.jaytel.com`
+- Hosted demo: <https://taste.jaytel.com>
+- Try a taste skill: [`pipeline/taste/taste-skill/SKILL.md`](pipeline/taste/taste-skill/SKILL.md)
 
 ## Repo Shape
 
@@ -76,7 +77,7 @@ npm run taste -- ./images --model openai/gpt-5.5
 
 We ran a small frontend design comparison with three agents: one base model
 with no skill, one using Anthropic's `frontend-design` skill, and one using the
-generated Taste skill from `pipeline/taste/04-skill/SKILL.md`. Each agent was
+generated Taste skill from `pipeline/taste/taste-skill/SKILL.md`. Each agent was
 given the same prompt within each test and asked to produce a standalone HTML
 file.
 
@@ -176,7 +177,7 @@ runs/{runId}/04-skill/SKILL.md
 ```
 
 The current checked-in example skill is Jaytel's skill:
-`pipeline/taste/04-skill/SKILL.md`.
+`pipeline/taste/taste-skill/SKILL.md`.
 
 ## Production Shape
 

@@ -16,4 +16,4 @@ npm run taste
 For this repo, keep the hosted web app OpenRouter-OAuth only. Individual
 OpenAI/Anthropic keys belong in the local pipeline and `packages/ai`, not as
 hosted `apps/web` UI or public API. Jaytel's checked-in example skill is
-`pipeline/taste/04-skill/SKILL.md`.
+`pipeline/taste/taste-skill/SKILL.md`.

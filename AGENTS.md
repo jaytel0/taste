@@ -73,7 +73,7 @@ The demo requires Postgres, Vercel Blob, `APP_ENCRYPTION_KEY`,
 - Direct OpenAI/Anthropic support belongs in the local pipeline and `packages/ai`.
 - Do not commit reference images or generated run artifacts; `reference-images/`
   and generated `pipeline/taste/` corpus/note/rule folders are intentionally gitignored.
-- Jaytel's example skill is `pipeline/taste/04-skill/SKILL.md`.
+- Jaytel's example skill is `pipeline/taste/taste-skill/SKILL.md`.
 - Local generated artifacts should stay under ignored `.taste/`.
 - Hosted generated run artifacts should live in Vercel Blob, not in git.
 
