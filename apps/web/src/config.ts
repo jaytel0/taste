@@ -33,6 +33,8 @@ const envSchema = z.object({
   RULE_MERGE_FAN_IN: z.coerce.number().int().min(2).default(6),
 });
 
+const productionRequiredFields = ["INTERNAL_API_SECRET", "CRON_SECRET"] as const;
+
 export class AppConfigError extends Error {
   readonly code = "server_config";
   readonly status = 500;
@@ -59,6 +61,12 @@ export function env() {
         ),
       ),
     );
+  }
+  if (process.env.NODE_ENV === "production") {
+    const missing = productionRequiredFields.filter((field) => !parsed.data[field]);
+    if (missing.length > 0) {
+      throw new AppConfigError(missing);
+    }
   }
   return parsed.data;
 }
