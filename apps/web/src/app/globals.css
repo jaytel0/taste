@@ -215,7 +215,7 @@ a {
 
 .shell__credit {
   /* Quiet header CTA — downloads a sample Taste skill. Visually one step
-     below the View source link in the hierarchy: same neutral hue, smaller,
+     below the GitHub link in the hierarchy: same neutral hue, smaller,
      lighter weight. Hover lifts opacity to full + a soft underline so the
      interactivity is discoverable without making the element shout. */
   font-size: 11px;

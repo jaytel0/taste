@@ -48,10 +48,10 @@ export function Shell({
             href={SOURCE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label="View source on GitHub"
+            aria-label="View on Github"
           >
             <GithubGlyph />
-            <span>View source</span>
+            <span>View on Github</span>
           </a>
         </div>
       </header>
