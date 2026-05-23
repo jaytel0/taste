@@ -1,7 +1,7 @@
 {
   "name": "Taste",
   "short_name": "Taste",
-  "description": "Turn a corpus of reference images into a reusable taste skill.",
+  "description": "Turn reference images into a reusable SKILL.md for AI design agents.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

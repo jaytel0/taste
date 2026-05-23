@@ -4,18 +4,72 @@ import type { ReactNode } from "react";
 
 import "./globals.css";
 
+const SITE_URL = "https://taste.jaytel.com";
+const SITE_NAME = "Taste";
+const SITE_DESCRIPTION =
+  "Turn reference images into a reusable SKILL.md for AI design agents.";
+const OG_IMAGE = {
+  url: "/taste-og.png",
+  width: 1200,
+  height: 630,
+  alt: "Taste turns reference images into a reusable AI design skill.",
+};
 const GA_MEASUREMENT_ID = "G-8VQ0X3HSWB";
 const CLARITY_PROJECT_ID = "wvsrt91x77";
 
 export const metadata: Metadata = {
-  applicationName: "Taste",
-  title: "Taste",
-  description: "Turn a corpus of reference images into a reusable taste skill.",
+  metadataBase: new URL(SITE_URL),
+  applicationName: SITE_NAME,
+  title: {
+    default: SITE_NAME,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  keywords: [
+    "Taste",
+    "SKILL.md",
+    "AI design skill",
+    "design agents",
+    "reference images",
+    "visual design pipeline",
+  ],
+  authors: [{ name: "Jaytel" }],
+  creator: "Jaytel",
+  publisher: "Jaytel",
+  alternates: {
+    canonical: "/",
+  },
   manifest: "/site.webmanifest",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    images: [OG_IMAGE.url],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Taste",
+    title: SITE_NAME,
   },
   icons: {
     icon: [
