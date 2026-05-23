@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   clearCredentials,
@@ -18,6 +18,12 @@ type CredentialScreenProps = {
 };
 
 const SOURCE_URL = "https://github.com/jaytel0/taste";
+
+// Single instruction blob the visitor hands to their coding agent. Written
+// as a natural-language directive (not a command-line snippet) because the
+// audience is "paste this into Claude/Cursor/Codex", not a shell. We name
+// the repo URL explicitly so the agent doesn't have to guess.
+const CLONE_PROMPT = `Clone ${SOURCE_URL} and get it set up locally so I can start running the pipeline and creating a skill. Let me know what information and API keys you need from me.`;
 
 export function CredentialScreen({
   initialStatus,
@@ -96,23 +102,16 @@ export function CredentialScreen({
               </>
             ) : (
               <>
-                <OpenRouterGlyph /> Connect OpenRouter
+                <OpenRouterGlyph /> Try with OpenRouter
               </>
             )}
           </button>
-          {/* Secondary CTA for technical visitors: clone the repo and run
-             the pipeline locally with direct provider keys. Sits next to
-             the OAuth button as a peer because for that audience it's the
-             real alternative — not a downgrade. GitHub glyph signals the
-             destination without needing extra label text. */}
-          <a
-            className="btn btn--quiet"
-            href={SOURCE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <GithubGlyph /> Clone and try locally
-          </a>
+          {/* Secondary CTA for technical visitors: hand a ready-made
+             instruction to their coding agent instead of sending them off
+             to GitHub to figure out the steps themselves. The label
+             cycles idle → copied → prompt so the visitor knows what to do
+             next without us writing a paragraph of help text. */}
+          <CloneAgentButton prompt={CLONE_PROMPT} />
         </div>
 
         {error && <p className="notice">{error}</p>}
@@ -174,21 +173,113 @@ function modeSub(status: CredentialStatus): string {
   return "Ready to create a run.";
 }
 
-function GithubGlyph() {
-  // Duplicated from Shell.tsx rather than extracted into a shared module
-  // because it's still only used in two places. Promote to a shared
-  // _components/glyphs.tsx if a third usage appears.
+type CopyState = "idle" | "copied" | "prompt";
+
+const COPY_LABELS: Record<CopyState, string> = {
+  idle: "Clone and try locally",
+  copied: "Copied!",
+  prompt: "Paste to your agent.",
+};
+
+const COPY_ORDER: readonly CopyState[] = ["idle", "copied", "prompt"];
+
+// Timings tuned per Emil Kowalski's playbook: each crossfade is well under
+// 300ms (label transition is 220ms with a 120ms lead-out delay on the
+// outgoing label — see globals.css). The hold durations are intentionally
+// uneven: "Copied!" is the receipt and should feel like a flash (900ms),
+// "Paste to your agent." is an instruction and needs time to read (2200ms).
+const COPIED_HOLD_MS = 900;
+const PROMPT_HOLD_MS = 2200;
+
+function CloneAgentButton({ prompt }: { prompt: string }) {
+  const [state, setState] = useState<CopyState>("idle");
+  const [failed, setFailed] = useState(false);
+  // Track pending timers so a second click while mid-cycle restarts
+  // cleanly instead of stacking transitions on top of each other.
+  const timersRef = useRef<number[]>([]);
+
+  useEffect(() => {
+    return () => {
+      timersRef.current.forEach((id) => window.clearTimeout(id));
+      timersRef.current = [];
+    };
+  }, []);
+
+  const clearTimers = () => {
+    timersRef.current.forEach((id) => window.clearTimeout(id));
+    timersRef.current = [];
+  };
+
+  const handleClick = useCallback(async () => {
+    clearTimers();
+    setFailed(false);
+    try {
+      await navigator.clipboard.writeText(prompt);
+    } catch {
+      // Clipboard can be denied (e.g. insecure context). Fall back to a
+      // textarea + execCommand so the affordance still works.
+      const ok = legacyCopy(prompt);
+      if (!ok) {
+        setFailed(true);
+        return;
+      }
+    }
+    setState("copied");
+    timersRef.current.push(
+      window.setTimeout(() => setState("prompt"), COPIED_HOLD_MS),
+    );
+    timersRef.current.push(
+      window.setTimeout(
+        () => setState("idle"),
+        COPIED_HOLD_MS + PROMPT_HOLD_MS,
+      ),
+    );
+  }, [prompt]);
+
   return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden
+    <button
+      type="button"
+      className="btn btn--quiet btn--copy"
+      onClick={() => void handleClick()}
+      data-state={state}
+      aria-live="polite"
     >
-      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
-    </svg>
+      {/* CSS grid stack: every label lives in the same grid cell, so the
+         button width is pinned to the widest label and never reflows.
+         Only the inactive labels are transformed/blurred — width and
+         layout stay rock-steady through the entire cycle. */}
+      <span className="btn-copy__stack">
+        {COPY_ORDER.map((s) => (
+          <span
+            key={s}
+            className="btn-copy__label"
+            data-active={s === state}
+            aria-hidden={s === state ? undefined : true}
+          >
+            {failed && s === "idle" ? "Copy failed — try again" : COPY_LABELS[s]}
+          </span>
+        ))}
+      </span>
+    </button>
   );
+}
+
+function legacyCopy(text: string): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
 }
 
 function OpenRouterGlyph() {

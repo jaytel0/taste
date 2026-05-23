@@ -590,6 +590,76 @@ a.shell__credit:focus-visible {
   background: var(--surface-3);
 }
 
+/* Copy-to-clipboard button — label cycles idle → copied → prompt. The
+   stack is a 1×1 grid so every label lives in the same cell; the button's
+   intrinsic width is therefore pinned to the widest label and never
+   reflows mid-cycle. Only opacity, transform, and filter animate — exactly
+   the three properties browsers composite without touching layout. */
+.btn--copy {
+  /* Lock width so the press scale and the label crossfade can't race the
+     box width back and forth. Without this, the existing transform 240ms
+     spring on .btn would briefly fight the label transition. */
+  will-change: transform;
+}
+
+.btn-copy__stack {
+  display: inline-grid;
+  grid-template-areas: "label";
+  align-items: center;
+  justify-items: center;
+  line-height: 1;
+}
+
+.btn-copy__label {
+  grid-area: label;
+  /* Outgoing state: slip up & blur out. Blur bridges the two strings so
+     swapping between e.g. "Copied!" and "Paste to your agent." reads as
+     one continuous motion rather than two letters teleporting. */
+  opacity: 0;
+  transform: translateY(-6px);
+  filter: blur(4px);
+  pointer-events: none;
+  transition:
+    opacity 180ms var(--ease-out),
+    transform 220ms var(--ease-out),
+    filter 180ms var(--ease-out);
+  will-change: transform, opacity, filter;
+}
+
+.btn-copy__label[data-active="true"] {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+  /* Asymmetric timing — the incoming label waits ~120ms so the outgoing
+     one has cleared the cell before it lands. Without the lead-out the
+     two strings overlap and read as ghosting; with it, it reads as a
+     swap. */
+  transition:
+    opacity 220ms var(--ease-out) 120ms,
+    transform 260ms var(--ease-spring) 120ms,
+    filter 220ms var(--ease-out) 120ms;
+}
+
+/* Mount-time entry: the very first paint should show the idle label in
+   its rest position with no animation — we only want motion on user-
+   initiated state changes. Override the entry transition for the idle
+   label so SSR/hydration doesn't fade it in. */
+.btn--copy[data-state="idle"] .btn-copy__label[data-active="true"] {
+  transition-delay: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* polish-opacity-fallback: keep the affordance (the swap is meaningful
+     feedback) but drop the motion + blur — opacity alone communicates the
+     state change without vestibular cost. */
+  .btn-copy__label,
+  .btn-copy__label[data-active="true"] {
+    transform: none;
+    filter: none;
+    transition: opacity 160ms linear;
+  }
+}
+
 .btn-row {
   display: flex;
   gap: 12px;
