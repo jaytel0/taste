@@ -149,7 +149,14 @@ async function api(path, init = {}) {
 }
 
 async function referenceImages(dir) {
-  const names = await readdir(dir);
+  const names = await readdir(dir).catch((error) => {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      throw new Error(
+        `No reference image directory found at ${dir}. Add local images there or set TASTE_REFERENCE_DIR.`,
+      );
+    }
+    throw error;
+  });
   return names
     .filter((name) => /\.(jpe?g|png|webp)$/i.test(name))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))

@@ -153,3 +153,5 @@ npm run e2e:prod
 Use `TASTE_BASE_URL` to target a preview deployment.
 The script requires `BLOB_READ_WRITE_TOKEN`, `INTERNAL_API_SECRET`,
 `TASTE_E2E_OPENAI_API_KEY`, and `TASTE_E2E_ANTHROPIC_API_KEY`.
+Put local test images in `pipeline/taste/01-corpus/reference-images` or set
+`TASTE_REFERENCE_DIR`; reference images are intentionally gitignored.

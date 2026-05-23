@@ -64,5 +64,6 @@ npm run e2e:prod --workspace @taste/web
 ```
 
 The production E2E script requires `BLOB_READ_WRITE_TOKEN`, `INTERNAL_API_SECRET`,
-`TASTE_E2E_OPENAI_API_KEY`, and `TASTE_E2E_ANTHROPIC_API_KEY`. It uses the checked
-in reference images under `pipeline/taste/01-corpus/reference-images`.
+`TASTE_E2E_OPENAI_API_KEY`, and `TASTE_E2E_ANTHROPIC_API_KEY`. Put local test
+images in `pipeline/taste/01-corpus/reference-images` or set `TASTE_REFERENCE_DIR`;
+reference images are intentionally gitignored.

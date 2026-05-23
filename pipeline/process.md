@@ -4,8 +4,6 @@ This directory now holds only stable pipeline inputs and the current generated
 skill:
 
 ```text
-pipeline/taste/01-corpus/reference-images/  # reference image set used for testing
-pipeline/taste/01-corpus/images.jsonl       # deterministic index of the reference set
 pipeline/taste/04-skill/SKILL.md            # current reusable taste skill
 ```
 
@@ -71,5 +69,6 @@ set +a
 npm run e2e:prod --workspace @taste/web
 ```
 
-By default this uses `https://taste.jaytel.com` and the reference
-images in `pipeline/taste/01-corpus/reference-images`.
+By default this uses `https://taste.jaytel.com` and local, gitignored images in
+`pipeline/taste/01-corpus/reference-images`. Set `TASTE_REFERENCE_DIR` to point
+at another private image corpus.
