@@ -51,6 +51,22 @@ const activeRunStatuses: RunStatus[] = [
   "generating_skill",
 ];
 const maxSkillNameLength = 80;
+const workflowJobPriority = sql<number>`
+  case
+    when ${workflowJobs.type} = 'index' then 0
+    when ${workflowJobs.type} = 'synthesize_note' then 1
+    when ${workflowJobs.type} in (
+      'prepare_rules',
+      'rule_chunk',
+      'reduce_rules',
+      'rule_merge',
+      'rule_set',
+      'skill'
+    ) then 2
+    when ${workflowJobs.type} = 'raw_analysis' then 3
+    else 4
+  end
+`;
 
 export class RunCanceledError extends Error {
   constructor(runId: string) {
@@ -605,7 +621,7 @@ export async function claimNextWorkflowJob(input: {
           sql`${workflowJobs.runAfter} <= ${now}`,
         ),
       )
-      .orderBy(asc(workflowJobs.runAfter), asc(workflowJobs.createdAt))
+      .orderBy(workflowJobPriority, asc(workflowJobs.runAfter), asc(workflowJobs.createdAt))
       .limit(1);
     if (!candidate) return null;
     const [claimed] = await db
