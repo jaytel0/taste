@@ -1,16 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { mapConcurrent } from "../src/pipeline/utils";
-import { workflowDrainSlots } from "../src/workflow/runner";
+import { workflowDrainBatchSize } from "../src/workflow/runner";
 
-describe("workflow drain slots", () => {
-  it("creates concrete work items for every drain slot", async () => {
-    const visited: number[] = [];
-
-    await mapConcurrent(workflowDrainSlots(4), 4, async (slot) => {
-      visited.push(slot);
-    });
-
-    expect(visited.sort()).toEqual([0, 1, 2, 3]);
+describe("workflow drain batching", () => {
+  it("caps each claimed batch by remaining jobs and configured concurrency", () => {
+    expect(workflowDrainBatchSize(24, 8)).toBe(8);
+    expect(workflowDrainBatchSize(3, 8)).toBe(3);
+    expect(workflowDrainBatchSize(0, 8)).toBe(0);
   });
 });

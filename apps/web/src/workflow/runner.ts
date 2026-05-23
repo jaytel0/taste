@@ -88,22 +88,30 @@ export async function drainWorkflow(input: {
   let completed = 0;
   let failed = 0;
 
-  const jobSlots = workflowDrainSlots(maxJobs);
-  await mapConcurrent(jobSlots, concurrency, async () => {
-    if (claimed >= maxJobs) return;
-    const leaseUntil = new Date(Date.now() + env().WORKFLOW_JOB_LEASE_SECONDS * 1000);
-    const job = await claimNextWorkflowJob({ workerId, leaseUntil });
-    if (!job) return;
-    claimed += 1;
-    try {
-      await executeWorkflowJob(job);
-      await completeWorkflowJob(job.id);
-      completed += 1;
-    } catch (error) {
-      await retryWorkflowJob(job, error);
-      failed += 1;
+  while (claimed < maxJobs) {
+    const remaining = maxJobs - claimed;
+    const batchSize = workflowDrainBatchSize(remaining, concurrency);
+    const jobs: WorkflowJob[] = [];
+    for (let index = 0; index < batchSize; index += 1) {
+      const leaseUntil = new Date(Date.now() + env().WORKFLOW_JOB_LEASE_SECONDS * 1000);
+      const job = await claimNextWorkflowJob({ workerId, leaseUntil });
+      if (!job) break;
+      jobs.push(job);
+      claimed += 1;
     }
-  });
+    if (jobs.length === 0) break;
+
+    await mapConcurrent(jobs, concurrency, async (job) => {
+      try {
+        await executeWorkflowJob(job);
+        await completeWorkflowJob(job.id);
+        completed += 1;
+      } catch (error) {
+        await retryWorkflowJob(job, error);
+        failed += 1;
+      }
+    });
+  }
 
   return {
     claimed,
@@ -113,8 +121,8 @@ export async function drainWorkflow(input: {
   };
 }
 
-export function workflowDrainSlots(maxJobs: number): number[] {
-  return Array.from({ length: maxJobs }, (_, index) => index);
+export function workflowDrainBatchSize(remainingJobs: number, concurrency: number): number {
+  return Math.max(0, Math.min(remainingJobs, concurrency));
 }
 
 export async function kickWorkflowDrain(origin: string | null) {
