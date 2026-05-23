@@ -1339,50 +1339,18 @@ a {
 }
 
 .accordion__content {
-  /* Container no longer fades — it just lifts subtly into place while its
-     children cascade in (see .manualform stagger below). One opacity
-     timeline per element keeps the math clean: parent stays at 1, children
-     handle the visible reveal. */
+  opacity: 0;
   transform: translateY(-4px);
-  transition: transform 280ms var(--ease-spring);
+  transition:
+    opacity 240ms cubic-bezier(0.32, 0.72, 0, 1),
+    transform 360ms cubic-bezier(0.32, 0.72, 0, 1);
   /* Visual spacing between the disclosure trigger and the form. */
   padding-top: 14px;
 }
 
 .accordion--open .accordion__content {
+  opacity: 1;
   transform: translateY(0);
-}
-
-/* Staggered child reveal when the accordion opens. Each direct child of the
-   manual key form fades + lifts in 30ms apart, so the form orchestrates
-   itself as the height expands rather than appearing as one block. Total
-   cascade is ~280ms (last child: 120ms delay + 160ms animation), keeping
-   the whole reveal within Emil's 300ms ceiling for context-switch motion.
-
-   Close is unstyled by design: when .accordion--open is removed, the
-   selectors below no longer match, children snap to their default state,
-   and the grid-template-rows collapse clips them. Matches iOS Settings. */
-.accordion--open .manualform > * {
-  animation: accordion-stagger 160ms var(--ease-spring) both;
-}
-
-.accordion--open .manualform > *:nth-child(1) { animation-delay: 30ms; }
-.accordion--open .manualform > *:nth-child(2) { animation-delay: 60ms; }
-.accordion--open .manualform > *:nth-child(3) { animation-delay: 90ms; }
-.accordion--open .manualform > *:nth-child(4) { animation-delay: 120ms; }
-/* Safe degradation if the form ever grows past 4 children — extra rows just
-   animate at 120ms delay alongside the 4th, never breaking the ceiling. */
-.accordion--open .manualform > *:nth-child(n + 5) { animation-delay: 120ms; }
-
-@keyframes accordion-stagger {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1391,16 +1359,11 @@ a {
   .disclose svg {
     transition: none;
   }
+  /* Keep opacity as a graceful fallback per Emil's reduced-motion rule:
+     soften the change rather than killing it entirely. */
   .accordion__content {
+    transition: opacity 120ms linear;
     transform: none;
-  }
-  /* Under reduced motion the global rule already collapses animation to
-     0.01ms, but the staggered delays would still create a flicker cascade.
-     Removing the animation entirely lets the children appear instantly
-     when the accordion expands — the height transition alone signals the
-     state change, per polish-dont-remove-all. */
-  .accordion--open .manualform > * {
-    animation: none;
   }
 }
 
