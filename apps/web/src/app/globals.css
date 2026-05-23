@@ -1076,8 +1076,15 @@ a {
 }
 
 .accordion__inner {
+  /* overflow:hidden clips at the PADDING-BOX edge, not the border-box edge,
+     so adding padding here reserves a clear zone for focus-ring shadows on
+     the first/last inputs without affecting the clip behavior during the
+     height transition. Horizontal padding is mirrored by a negative margin
+     below so the form content still aligns with the card's content rail. */
   overflow: hidden;
   min-height: 0;
+  padding: 6px 8px;
+  margin: 0 -8px;
 }
 
 .accordion__content {
@@ -1086,12 +1093,8 @@ a {
   transition:
     opacity 240ms cubic-bezier(0.32, 0.72, 0, 1),
     transform 360ms cubic-bezier(0.32, 0.72, 0, 1);
-  /* Top + side breathing room so focus-ring shadows on the first input have
-     clear space inside the .accordion__inner overflow:hidden box, and the
-     left edge of any focus ring doesn't ride flush against the card's
-     content rail either. */
-  padding: 24px 6px 6px;
-  margin: 0 -6px;
+  /* Visual spacing between the disclosure trigger and the form. */
+  padding-top: 14px;
 }
 
 .accordion--open .accordion__content {
