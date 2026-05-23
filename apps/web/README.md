@@ -1,7 +1,16 @@
 # Taste Web App
 
-Next.js app and backend pipeline for turning uploaded reference images into a
-final `SKILL.md`.
+Next.js hosted demo for turning uploaded reference images into a final
+`SKILL.md`.
+
+For the simple local pipeline, use the repo root command instead:
+
+```bash
+npm run taste
+```
+
+The local runner uses `packages/ai` directly and does not require Postgres,
+Vercel Blob, Cron, or hosted OAuth.
 
 ## Architecture
 
@@ -140,8 +149,7 @@ npm run dev:web
 ```
 
 Open `http://localhost:3000` and connect with OpenRouter. The main app has no
-direct key entry. The Skill Lab can run in mock mode without a key, or with an
-OpenRouter key via `OPENROUTER_API_KEY` / the lab UI.
+direct key entry.
 
 ## Production E2E
 

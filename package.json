@@ -13,11 +13,14 @@
     "build": "npm run build --workspaces --if-present",
     "check": "npm run check --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "taste": "tsx scripts/taste-local.ts",
+    "taste:local": "npm run taste --",
     "e2e:prod": "npm run e2e:prod --workspace @taste/web",
     "dev:web": "npm run dev --workspace @taste/web",
     "db:generate": "npm run db:generate --workspace @taste/web"
   },
   "devDependencies": {
+    "tsx": "^4.22.3",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14"
   }

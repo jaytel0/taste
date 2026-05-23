@@ -13,6 +13,9 @@ dist/
 !apps/web/.env.example
 .taste-lab/
 apps/web/.taste-lab/
+.taste/
+reference-images/*
+!reference-images/README.md
 
 pipeline/taste/cache/
 pipeline/taste/01-corpus/images.jsonl

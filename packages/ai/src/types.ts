@@ -15,12 +15,27 @@ export type ImageInput = {
 
 export type AiCredentialMode =
   | "openrouter"
+  | "vercel_gateway"
+  | "openai"
+  | "anthropic"
   | "direct";
 
 export type AiProviderCredentials =
   | {
       mode: "openrouter";
       openrouterApiKey: string;
+    }
+  | {
+      mode: "vercel_gateway";
+      aiGatewayApiKey: string;
+    }
+  | {
+      mode: "openai";
+      openaiApiKey: string;
+    }
+  | {
+      mode: "anthropic";
+      anthropicApiKey: string;
     }
   | {
       mode: "direct";

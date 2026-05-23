@@ -37,8 +37,11 @@ fusion model does not see which analysis came from which model.
 Supported credential modes for local tooling and backend callers:
 
 ```text
-openrouter      # one OpenRouter key for both OpenAI and Anthropic model IDs
-direct          # separate OpenAI and Anthropic keys
+direct           # separate OpenAI and Anthropic keys; intended local default
+openai           # one OpenAI key, OpenAI models only
+anthropic        # one Anthropic key, Anthropic models only
+openrouter       # one OpenRouter key for both OpenAI and Anthropic model IDs
+vercel_gateway   # one Vercel AI Gateway key through AI_GATEWAY_API_KEY
 ```
 
 The hosted web app intentionally exposes OpenRouter OAuth only. Keep direct

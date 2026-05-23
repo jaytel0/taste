@@ -1,7 +1,7 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateText } from "ai";
+import { createGateway, generateText, type LanguageModel } from "ai";
 
 import type { AiProviderCredentials, ImageInput, TextGenerationResult } from "./types";
 
@@ -58,7 +58,10 @@ export async function generateProviderVisionText(input: {
   return toTextGenerationResult(input.model, result);
 }
 
-function createLanguageModel(credentials: AiProviderCredentials | undefined, model: string) {
+function createLanguageModel(
+  credentials: AiProviderCredentials | undefined,
+  model: string,
+): LanguageModel {
   if (!credentials) {
     throw new Error("AI provider credentials are required.");
   }
@@ -67,8 +70,28 @@ function createLanguageModel(credentials: AiProviderCredentials | undefined, mod
     return createOpenRouter({ apiKey: credentials.openrouterApiKey })(model);
   }
 
+  if (credentials.mode === "vercel_gateway") {
+    return createGateway({ apiKey: credentials.aiGatewayApiKey })(model);
+  }
+
+  if (credentials.mode === "openai") {
+    assertProviderModel(model, "openai", "OpenAI credential mode");
+    return createOpenAI({ apiKey: credentials.openaiApiKey })(
+      stripProviderPrefix(model, "openai"),
+    );
+  }
+
+  if (credentials.mode === "anthropic") {
+    assertProviderModel(model, "anthropic", "Anthropic credential mode");
+    return createAnthropic({ apiKey: credentials.anthropicApiKey })(
+      stripProviderPrefix(model, "anthropic"),
+    );
+  }
+
   if (model.startsWith("openai/")) {
-    return createOpenAI({ apiKey: credentials.openaiApiKey })(stripProviderPrefix(model, "openai"));
+    return createOpenAI({ apiKey: credentials.openaiApiKey })(
+      stripProviderPrefix(model, "openai"),
+    );
   }
 
   if (model.startsWith("anthropic/")) {
@@ -78,6 +101,16 @@ function createLanguageModel(credentials: AiProviderCredentials | undefined, mod
   }
 
   throw new Error(`Direct credential mode does not support model: ${model}`);
+}
+
+function assertProviderModel(
+  model: string,
+  provider: "openai" | "anthropic",
+  mode: string,
+) {
+  if (!model.startsWith(`${provider}/`)) {
+    throw new Error(`${mode} does not support model: ${model}`);
+  }
 }
 
 function stripProviderPrefix(model: string, provider: "openai" | "anthropic"): string {
