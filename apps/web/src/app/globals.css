@@ -676,6 +676,11 @@ a {
   display: flex;
   flex-direction: column;
   margin-top: 0;
+  /* Strip the browser's default <ul> indent + bullets so the file rows sit
+     on the same left rail as the panel head and the Start run button. */
+  list-style: none;
+  padding-left: 0;
+  margin-block: 0;
 }
 
 .filelist--scroll {

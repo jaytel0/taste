@@ -111,7 +111,6 @@ export function SkillScreen({ creds, onStartAnother }: SkillScreenProps) {
         <button type="button" className="btn btn--ghost" onClick={onStartAnother}>
           Start another run
         </button>
-        {content && <span className="kbd">⌘C</span>}
       </div>
 
       {loading && (

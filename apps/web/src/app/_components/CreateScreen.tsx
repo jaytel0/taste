@@ -326,7 +326,6 @@ export function CreateScreen({ credentials, onCreated }: CreateScreenProps) {
             "Start run"
           )}
         </button>
-        {canSubmit && <span className="kbd">⌘↵</span>}
         {!canSubmit && !submitting && (
           <span className="btn-row__caption muted">
             {files.length === 0
