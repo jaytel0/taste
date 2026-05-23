@@ -9,22 +9,24 @@ import {
 
 export function PastGenerations() {
   const [items, setItems] = useState<StoredSkillGeneration[]>([]);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [copyError, setCopyError] = useState<string | null>(null);
+  const [downloadedId, setDownloadedId] = useState<string | null>(null);
 
   useEffect(() => {
     setItems(loadStoredSkillGenerations());
   }, []);
 
-  const handleCopy = useCallback(async (item: StoredSkillGeneration) => {
-    try {
-      await navigator.clipboard.writeText(item.content);
-      setCopyError(null);
-      setCopiedId(item.id);
-      window.setTimeout(() => setCopiedId(null), 1600);
-    } catch {
-      setCopyError("Clipboard access was blocked.");
-    }
+  const handleDownload = useCallback((item: StoredSkillGeneration) => {
+    const blob = new Blob([item.content], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "SKILL.md";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setDownloadedId(item.id);
+    window.setTimeout(() => setDownloadedId(null), 1600);
   }, []);
 
   if (items.length === 0) return null;
@@ -43,15 +45,14 @@ export function PastGenerations() {
             </div>
             <button
               type="button"
-              className="btn btn--quiet btn--sm"
-              onClick={() => void handleCopy(item)}
+              className="btn btn--primary btn--sm"
+              onClick={() => handleDownload(item)}
             >
-              {copiedId === item.id ? "Copied" : "Copy"}
+              {downloadedId === item.id ? "Downloaded" : "Download"}
             </button>
           </article>
         ))}
       </div>
-      {copyError && <p className="notice">{copyError}</p>}
     </section>
   );
 }

@@ -71,5 +71,5 @@ set +a
 npm run e2e:prod --workspace @taste/web
 ```
 
-By default this uses `https://taste-molly-studio.vercel.app` and the reference
+By default this uses `https://taste.jaytel.com` and the reference
 images in `pipeline/taste/01-corpus/reference-images`.

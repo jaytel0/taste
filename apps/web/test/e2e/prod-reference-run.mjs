@@ -5,7 +5,7 @@ import { readdir, readFile, stat } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const base = process.env.TASTE_BASE_URL ?? "https://taste-molly-studio.vercel.app";
+const base = process.env.TASTE_BASE_URL ?? "https://taste.jaytel.com";
 const referenceDir = resolve(
   process.env.TASTE_REFERENCE_DIR ?? "../../pipeline/taste/01-corpus/reference-images",
 );
@@ -151,7 +151,7 @@ async function api(path, init = {}) {
 async function referenceImages(dir) {
   const names = await readdir(dir);
   return names
-    .filter((name) => /\.(jpe?g|png|webp|gif)$/i.test(name))
+    .filter((name) => /\.(jpe?g|png|webp)$/i.test(name))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     .map((name) => join(dir, name));
 }
@@ -161,7 +161,6 @@ function contentTypeFor(path) {
   if (ext === ".jpg" || ext === ".jpeg") return "image/jpeg";
   if (ext === ".png") return "image/png";
   if (ext === ".webp") return "image/webp";
-  if (ext === ".gif") return "image/gif";
   return "application/octet-stream";
 }
 

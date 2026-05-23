@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
-import { env } from "@/config";
+import { ACCEPTED_IMAGE_TYPES, env } from "@/config";
 import type { CredentialBundle } from "@/credentials/secrets";
 import { readCredentialBundle } from "@/credentials/session";
 import { createRun } from "@/db/repository";
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       credentialMode: run.credentialMode,
       maxImages: run.maxImages,
       maxImageBytes: env().MAX_IMAGE_BYTES,
-      acceptedTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
+      acceptedTypes: [...ACCEPTED_IMAGE_TYPES],
     });
   } catch (error) {
     return errorResponse(error);

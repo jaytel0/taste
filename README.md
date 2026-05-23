@@ -1,4 +1,4 @@
-<p>
+<p align="center">
   <img src="apps/web/public/taste.png" alt="Taste logo" width="96" height="96">
 </p>
 

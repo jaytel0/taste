@@ -12,7 +12,6 @@ export const PRE_CREATE_ACCEPTED_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
-  "image/gif",
 ] as const;
 
 export type CreateRunInput = {
