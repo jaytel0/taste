@@ -87,14 +87,19 @@ export function SkillScreen({ creds, onStartAnother }: SkillScreenProps) {
   return (
     <section className="card card--lift">
       <h1 className="card__title">Your taste skill is ready.</h1>
-      <p className="card__sub">
-        A single SKILL.md captured from the pipeline. Copy it, save it, or start a new run.
-      </p>
 
       <div className="card__section btn-row">
         <button
           type="button"
           className="btn btn--primary"
+          onClick={handleDownload}
+          disabled={!content || loading}
+        >
+          Download skill
+        </button>
+        <button
+          type="button"
+          className="btn btn--quiet"
           onClick={() => void handleCopy()}
           disabled={!content || loading}
         >
@@ -105,14 +110,6 @@ export function SkillScreen({ creds, onStartAnother }: SkillScreenProps) {
           ) : (
             "Copy to clipboard"
           )}
-        </button>
-        <button
-          type="button"
-          className="btn btn--quiet"
-          onClick={handleDownload}
-          disabled={!content || loading}
-        >
-          Download SKILL.md
         </button>
         <button type="button" className="btn btn--ghost" onClick={onStartAnother}>
           Start another run
