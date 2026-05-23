@@ -30,16 +30,21 @@ export function Shell({
           <img className="shell__logo" src="/taste.png" alt="" aria-hidden />
           Taste
         </span>
-        <a
-          className="shell__source"
-          href={SOURCE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="View source on GitHub"
-        >
-          <GithubGlyph />
-          <span>View source</span>
-        </a>
+        <div className="shell__head-right">
+          <span className="shell__credit" aria-label="Designed with the Taste Skill, version 1">
+            Designed with Taste Skill V1
+          </span>
+          <a
+            className="shell__source"
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View source on GitHub"
+          >
+            <GithubGlyph />
+            <span>View source</span>
+          </a>
+        </div>
       </header>
       <main className="shell__main">{children}</main>
       {showFooter && (
