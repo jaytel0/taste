@@ -204,5 +204,5 @@ npm run e2e:prod
 The production E2E script requires `BLOB_READ_WRITE_TOKEN`,
 `INTERNAL_API_SECRET`, and `TASTE_E2E_COOKIE` from a signed-in OpenRouter
 session. Put local test images in
-`pipeline/taste/01-corpus/reference-images` or set `TASTE_REFERENCE_DIR`;
+`reference-images/` or set `TASTE_REFERENCE_DIR`;
 reference images are intentionally gitignored.

@@ -70,5 +70,5 @@ npm run e2e:prod --workspace @taste/web
 ```
 
 By default this uses `https://taste.jaytel.com` and local, gitignored images in
-`pipeline/taste/01-corpus/reference-images`. Set `TASTE_REFERENCE_DIR` to point
-at another private image corpus.
+`reference-images/`. Set `TASTE_REFERENCE_DIR` to point at another private
+image corpus.

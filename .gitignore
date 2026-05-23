@@ -18,9 +18,6 @@ reference-images/*
 !reference-images/README.md
 
 pipeline/taste/cache/
-pipeline/taste/01-corpus/images.jsonl
-pipeline/taste/01-corpus/reference-images/*
-!pipeline/taste/01-corpus/reference-images/README.md
 pipeline/taste/05-pi-trial/logs/
 pipeline/taste/00-config/pi-headless/sessions/
 .vercel

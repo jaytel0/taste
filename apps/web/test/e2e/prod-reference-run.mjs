@@ -7,7 +7,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 const base = process.env.TASTE_BASE_URL ?? "https://taste.jaytel.com";
 const referenceDir = resolve(
-  process.env.TASTE_REFERENCE_DIR ?? "../../pipeline/taste/01-corpus/reference-images",
+  process.env.TASTE_REFERENCE_DIR ?? "../../reference-images",
 );
 const files = process.argv.slice(2).length > 0
   ? process.argv.slice(2).map((file) => resolve(file))

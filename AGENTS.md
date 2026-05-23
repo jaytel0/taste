@@ -71,7 +71,7 @@ The demo requires Postgres, Vercel Blob, `APP_ENCRYPTION_KEY`,
 - Hosted web credentials are OpenRouter OAuth only.
 - Do not add public UI or API routes that accept individual OpenAI/Anthropic keys.
 - Direct OpenAI/Anthropic support belongs in the local pipeline and `packages/ai`.
-- Do not commit reference images; `reference-images/` and `pipeline/taste/01-corpus/reference-images/` are intentionally gitignored.
+- Do not commit reference images; `reference-images/` is intentionally gitignored.
 - Jaytel's example skill is `pipeline/taste/04-skill/SKILL.md`.
 - Local generated artifacts should stay under ignored `.taste/`.
 - Hosted generated run artifacts should live in Vercel Blob, not in git.
