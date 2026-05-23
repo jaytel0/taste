@@ -6,7 +6,7 @@ export type RunCredentials = {
 // Pre-create client-side guardrails. The server is the source of truth and
 // returns its own caps via CreateRunResponse; these only exist so we can
 // reject obviously-invalid selections before a round-trip.
-export const PRE_CREATE_IMAGE_CAP = 100;
+export const PRE_CREATE_IMAGE_CAP = 20;
 export const PRE_CREATE_IMAGE_BYTES_CAP = 10 * 1024 * 1024;
 export const PRE_CREATE_ACCEPTED_TYPES = [
   "image/jpeg",

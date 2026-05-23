@@ -10,7 +10,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   APP_ENCRYPTION_KEY: z.string().min(32),
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
-  MAX_IMAGES_PER_RUN: z.coerce.number().int().positive().default(100),
+  MAX_IMAGES_PER_RUN: z.coerce.number().int().positive().default(20),
   MAX_IMAGE_BYTES: z.coerce.number().int().positive().default(10 * 1024 * 1024),
   RATE_LIMIT_ENABLED: z.coerce.boolean().default(true),
   RUN_RETENTION_HOURS: z.coerce.number().int().positive().default(24),

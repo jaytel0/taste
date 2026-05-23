@@ -113,7 +113,7 @@ layout, spacing, color, type, texture, composition, density, and hierarchy.
 ### 2. Index the Corpus
 
 The pipeline indexes every uploaded image, removes exact duplicates, and assigns
-stable image ids. The current production limit is 100 images per run.
+stable image ids. The current production limit is 20 images per run.
 
 Artifacts start here:
 

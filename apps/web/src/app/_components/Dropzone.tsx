@@ -77,7 +77,7 @@ export function Dropzone({
             : `${fileCount} ${fileCount === 1 ? "image" : "images"} — ${formatBytes(totalBytes)}`}
         </div>
         <div className="dropzone__secondary">
-          JPEG · PNG · WebP · GIF · up to {PRE_CREATE_IMAGE_CAP} files
+          JPG · PNG · WebP · Max {PRE_CREATE_IMAGE_CAP}
         </div>
       </div>
     </div>
